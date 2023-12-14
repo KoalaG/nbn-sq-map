@@ -6,6 +6,31 @@
 
     const MIN_ZOOM_FOR_DATA_FETCH = 13;
 
+    
+    // Constant Colours
+    const colourFTTP 		= '#1D7044';
+    const colourFTTPAvail   = '#75AD6F';
+    const colourFTTPSoon    = '#C8E3C5';
+    const colourHFC 		= '#FFBE00';
+    const colourFTTC 		= '#FF7E01';
+    const colourFTTCAvail   = '#FF7E01';
+    const colourFTTNB 		= '#E3071D';
+    const colourFW 		    = '#02B9E3';
+    const colourFWAvail 	= '#022BE3';
+    const colourSat 	    = '#6B02E3';
+
+    const colourEE_CBD_ZBC  = '#1D7044';
+    const colourEE_CBD_BC   = '#02B9E3';
+    const colourEE_Z123_ZBC = '#FF7E01';
+    const colourEE_Z123_BC  = '#E3071D';
+    
+    const COL_TECH_AVAIL            = '#1D7044';
+    const COL_TECH_BUILDFINALISED   = '#75AD6F';
+    const COL_TECH_DESIGN           = '#C8E3C5';
+    const COL_TECH_COMMITTED        = '#FF7E01';
+
+    const colourUnknown     = '#888888';
+
     class ControlZoomWarning {
 
         nbnTechMap = null;
@@ -33,6 +58,157 @@
             this.controlDiv.innerHTML = legendHTML;
 
             return this.controlDiv;
+        }
+
+        show() {
+            this.control.addTo(this.nbnTechMap.map);
+        }
+
+        remove() {
+            this.control.remove();
+        }
+
+    }
+
+    class ControDisplayMode {
+
+        displayMode = 'all';
+
+        nbnTechMap = null;
+        control = null;
+        controlDiv = null;
+
+        allLabel = null;
+        allRadio = null;
+        allText = null;
+        upgradeLabel = null;
+        upgradeRadio = null;
+        upgradeText = null;
+        eeLabel = null;
+        eeRadio = null;
+        eeText = null;
+        
+        constructor (nbnTechMap) {
+            this.nbnTechMap = nbnTechMap;
+            this.control = L.control({ position: 'topright' });
+            this.control.onAdd = () => this.addControlDiv();
+            this.show();
+        }
+        
+
+        changeMode(mode) {
+            this.displayMode = mode;
+            this.nbnTechMap.refreshMarkersFromStore();
+            this.nbnTechMap.controls.legend.refresh();
+        }
+
+        show() {
+            this.control.addTo(this.nbnTechMap.map);
+        }
+
+        remove() {
+            this.control.remove();
+        }
+
+        addControlDiv() {
+
+            if (!this.controlDiv) {
+                this.controlDiv = L.DomUtil.create('div', 'info legend');
+            }
+
+            this.controlDiv.style.backgroundColor = "#ffffff";
+            this.controlDiv.style.opacity = "0.8";
+            this.controlDiv.style.padding = "5px";
+            this.controlDiv.style.borderRadius = "5px";
+            
+            this.allLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
+            this.allRadio = L.DomUtil.create('input', 'control-input', this.allLabel);
+            this.allRadio.type = 'radio';
+            this.allRadio.checked = true;
+            this.allRadio.name = 'display-mode';
+            this.allRadio.value = 'all';
+            L.DomEvent.on(this.allRadio, 'change', (e) => this.changeMode('all'));
+            this.allText = L.DomUtil.create('span', 'control-text', this.allLabel);
+            this.allText.innerText = 'All';
+
+            this.upgradeLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
+            this.upgradeRadio = L.DomUtil.create('input', 'control-input', this.upgradeLabel);
+            this.upgradeRadio.type = 'radio';
+            this.upgradeRadio.name = 'display-mode';
+            this.upgradeRadio.value = 'upgrade';
+            L.DomEvent.on(this.upgradeRadio, 'change', () => this.changeMode('upgrade'));
+            this.upgradeText = L.DomUtil.create('span', 'control-text', this.upgradeLabel);
+            this.upgradeText.innerText = 'Tech Upgrade';
+
+            this.eeLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
+            this.eeRadio = L.DomUtil.create('input', 'control-input', this.eeLabel);
+            this.eeRadio.type = 'radio';
+            this.eeRadio.name = 'display-mode';
+            this.eeRadio.value = 'ee';
+            L.DomEvent.on(this.eeRadio, 'change', () => this.changeMode('ee'));
+            this.eeText = L.DomUtil.create('span', 'control-text', this.eeLabel);
+            this.eeText.innerText = 'EE';
+
+            return this.controlDiv;
+
+        }
+
+    }
+
+    class ControlLegend {
+
+        nbnTechMap = null;
+        control = null;
+        controlDiv = null;
+        
+        constructor (nbnTechMap) {
+            this.nbnTechMap = nbnTechMap;
+            this.control = L.control({ position: 'bottomright' });
+            this.control.onAdd = (map) => this.addControlDiv(map);
+            this.show();
+        }
+
+
+        getLegendHTML() {
+            if (this.nbnTechMap.controls.displayMode?.displayMode == 'ee') {
+                return '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_CBD_ZBC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone CBD ($0 Build)<br>' + 
+                    '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_CBD_BC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone CBD (Build POA)<br>' +
+                    '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_Z123_ZBC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone 1/2/3 ($0 Build)<br>' +
+                    '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_Z123_BC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone 1/2/3 (Build POA)<br>';
+
+            }
+
+            return '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTP+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP<br>' + 
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTPAvail+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP Upgrade<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTPSoon+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP Upgrade Soon<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourHFC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> HFC<br>' + 
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTC<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTNB+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTN/FTTB<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFW+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FW<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFWAvail+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FW Upgrade<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourSat+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Satellite<br>' +
+                '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourUnknown+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Unknown';
+        }
+
+        addControlDiv(map) {
+
+            if (!this.controlDiv) {
+                this.controlDiv = L.DomUtil.create('div', 'info legend');
+            }
+
+            this.controlDiv.style.backgroundColor = "#ffffff";
+            this.controlDiv.style.opacity = "0.8";
+            this.controlDiv.style.padding = "5px";
+            this.controlDiv.style.borderRadius = "5px";
+            this.controlDiv.style.width = "150px";
+
+            this.controlDiv.innerHTML = this.getLegendHTML();
+
+            return this.controlDiv;
+        }
+
+        refresh() {
+            this.controlDiv.innerHTML = this.getLegendHTML();
         }
 
         show() {
@@ -209,6 +385,8 @@
         // Stores map controls
         controls = {
             zoomWarning: null,
+            legend: null,
+            displayMode: null,
         }
 
         /**
@@ -218,18 +396,23 @@
         constructor(options = {}) {
             Object.assign(DEFAULT_OPTIONS, options);
 
-            this.initMap(options.mapContainerId);
+
+            this.createMap(options.mapContainerId);
 
             this.lipApi = new LipApi(this);
             this.datastore = new MemoryDatastore(this);
-            this.controls.zoomWarning = new ControlZoomWarning(this);
             this.markerGroup = new MarkerGroup(this);
+            this.controls.zoomWarning = new ControlZoomWarning(this);
+            this.controls.legend = new ControlLegend(this);
+            this.controls.displayMode = new ControDisplayMode(this);
+
+            this.initMap();
         }
 
         /**
-         * Initialise Map
+         * Create Map
          */
-        initMap(mapContainerId) {
+        createMap(mapContainerId) {
 
             // Create the map
             this.map = L.map(mapContainerId, { preferCanvas: true });
@@ -242,6 +425,13 @@
                 });
                 
             this.mapTileLayer.addTo(this.map);
+
+        }
+
+        /**
+         * Initialise Map
+         */
+        initMap() {
 
             // Add event handlers
             this.map.on('locationerror', function(e) {
@@ -309,7 +499,7 @@
         renderPoint(place) {
             return L.circleMarker([ place.latitude, place.longitude ], {
                 radius: 5,
-                fillColor: getPlaceColour(place),
+                fillColor: this.getPlaceColour(place),
                 color: "#000000",
                 weight: 1,
                 opacity: 1,
@@ -341,8 +531,36 @@
             const placeMarkersOutOfBounds = this.datastore.getPlaceMarkersOutOfBounds();
             this.markerGroup.markerGroup.removeLayers(placeMarkersOutOfBounds);
 
-            const placeMarkersWithinBounds = this.datastore.getPlaceMarkersWithinBounds()
-            this.markerGroup.markerGroup.addLayers(placeMarkersWithinBounds);
+                
+            const placeMarkersWithinBounds = this.datastore.getPlaceMarkersWithinBounds();
+            
+            if (this.controls.displayMode.displayMode == 'all') {
+                this.markerGroup.markerGroup.addLayers(placeMarkersWithinBounds);
+            }
+
+            if (this.controls.displayMode.displayMode == 'upgrade') {
+                this.markerGroup.markerGroup.removeLayers(
+                    placeMarkersWithinBounds.filter(placeMarker => !isPlaceFTTPSoon(placeMarker.options.place))
+                );
+                this.markerGroup.markerGroup.addLayers(
+                    placeMarkersWithinBounds.filter(placeMarker => isPlaceFTTPSoon(placeMarker.options.place))
+                );
+            }
+
+            if (this.controls.displayMode.displayMode == 'ee') {
+                this.markerGroup.markerGroup.removeLayers(
+                    placeMarkersWithinBounds.filter(placeMarker => !placeMarker.options.place.ee)
+                );
+                this.markerGroup.markerGroup.addLayers(
+                    placeMarkersWithinBounds.filter(placeMarker => placeMarker.options.place.ee)
+                );
+            }
+
+            this.markerGroup.markerGroup.getLayers().forEach(marker => {
+                marker.setStyle({
+                    fillColor: this.getPlaceColour(marker.options.place),
+                });
+            });
 
         }
 
@@ -376,28 +594,77 @@
         
         }
 
+        
+        getPlaceColour(place) {
+
+            /** CBD Pricing */
+            if (this.controls.displayMode.displayMode == 'ee') {
+
+                if(place.cbdpricing && place.zeroBuildCost) {
+                    return colourEE_CBD_ZBC;
+                }
+
+                if(place.cbdpricing && !place.zeroBuildCost) {
+                    return colourEE_CBD_BC;
+                }
+
+                if(!place.cbdpricing && place.zeroBuildCost) {
+                    return colourEE_Z123_ZBC;
+                }
+
+                if(!place.cbdpricing && !place.zeroBuildCost) {
+                    return colourEE_Z123_BC;
+                }
+
+                return colourUnknown;
+
+            }
+
+            if (isPlaceFTTP(place)) {
+                return colourFTTP;
+            }
+
+            if (isPlaceFTTPAvail(place)) {
+                return colourFTTPAvail;
+            }
+
+            if (isPlaceFTTPSoon(place)) {
+                return colourFTTPSoon;
+            }
+
+            if (isPlaceFTTPFar(place)) {
+                return getTechColour(place.techType);
+            }
+
+            if (isPlaceFTTC(place)) {
+                return colourFTTC;
+            }
+
+            if (isFWtoFTTC(place)) {
+                return colourFTTCAvail;
+            }
+
+            if (isFwtoFTTN(place)) {
+                return colourFTTNB;
+            }
+            
+            if (isSatToFW(place)) {
+                return colourFWAvail;
+            }
+
+            if (place.altReasonCode && place.altReasonCode != 'NULL_NA') {
+                console.log(place);
+            }
+
+            return getTechColour(place.techType);
+        }
+
     }
 
     const nbnTechMap = new NbnTechMap({
         mapContainerId: 'map',
     });
 
-    // Constant Colours
-    const colourFTTP 		= '#1D7044';
-    const colourFTTPAvail   = '#75AD6F';
-    const colourFTTPSoon    = '#C8E3C5';
-    const colourHFC 		= '#FFBE00';
-    const colourFTTC 		= '#FF7E01';
-    const colourFTTCAvail   = '#FF7E01';
-    const colourFTTNB 		= '#E3071D';
-    const colourFW 		    = '#02B9E3';
-    const colourFWAvail 	= '#022BE3';
-    const colourSat 	    = '#6B02E3';
-    const colourEE_CBD_ZBC  = '#1D7044';
-    const colourEE_CBD_BC   = '#C8E3C5';
-    const colourEE_Z123_ZBC = '#FF7E01';
-    const colourEE_Z123_BC  = '#E3071D';
-    const colourUnknown     = '#888888';
 
 
     function isPlaceFTTP(place) {
@@ -482,81 +749,5 @@
         return colourUnknown;
     }
 
-    function getPlaceColour(place) {
-
-        if (isPlaceFTTP(place)) {
-            return colourFTTP;
-        }
-
-        if (isPlaceFTTPAvail(place)) {
-            return colourFTTPAvail;
-        }
-
-        if (isPlaceFTTPSoon(place)) {
-            return colourFTTPSoon;
-        }
-
-        if (isPlaceFTTPFar(place)) {
-            return getTechColour(place.techType);
-        }
-
-        if (isPlaceFTTC(place)) {
-            return colourFTTC;
-        }
-
-        if (isFWtoFTTC(place)) {
-            return colourFTTCAvail;
-        }
-
-        if (isFwtoFTTN(place)) {
-            return colourFTTNB;
-        }
-        
-        if (isSatToFW(place)) {
-            return colourFWAvail;
-        }
-
-        if (place.altReasonCode && place.altReasonCode != 'NULL_NA') {
-            console.log(place);
-        }
-
-        return getTechColour(place.techType);
-    }
-
-/*
-function addLegend() {
-	// add legend
-  var legend = L.control({ position: 'bottomright' });
-  legend.onAdd = function (map) {
-    var div = L.DomUtil.create('div', 'info legend');
-    // include a opacity background over legend
-    div.style.backgroundColor = "#ffffff";
-    div.style.opacity = "0.8";
-    div.style.padding = "5px";
-    div.style.borderRadius = "5px";
-    div.style.width = "150px";
-    var legendHTML = 
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTP+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP<br>' + 
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTPAvail+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP Upgrade<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTPSoon+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP Upgrade Soon<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourHFC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> HFC<br>' + 
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTC<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTNB+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTN/FTTB<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFW+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FW<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFWAvail+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FW Upgrade<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourSat+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Satellite<br>' +
-        '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourUnknown+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Unknown';
-    div.innerHTML = legendHTML;
-    return div;
-  }
-  legend.addTo(map);
-}
-
-map.on('zoomend', mapChanged);
-//map.on('moveend', mapChanged);
-
-mapChanged();
-addLegend();
- */
 
 })();
