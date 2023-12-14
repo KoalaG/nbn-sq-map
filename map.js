@@ -1,9 +1,6 @@
 (function() {
 
-    // center of the map
-    var center = [-36.09882, 146.92223];
-
-    const NbnTechMapDefaultOptions = {
+    const DEFAULT_OPTIONS = {
         mapContainerId: 'map',
     }
 
@@ -93,8 +90,46 @@
             
         nbnTechMap = null;
 
+        placeMarkerStore = {};
+
         constructor(nbnTechMap) {
             this.nbnTechMap = nbnTechMap;
+        }
+
+        storePlaceMarker(placeMarker) {
+            if (!this.placeMarkerStore[placeMarker.options.place.locid]) {
+                this.placeMarkerStore[placeMarker.options.place.locid] = placeMarker;
+            }
+            this.placeMarkerStore[placeMarker.options.place.locid].options = placeMarker.options;
+        }
+
+        getPlaceMarker(locid) {
+            return this.placeMarkerStore[locid];
+        }
+
+        getPlaceMarkers() {
+            return Object.keys(this.placeMarkerStore).map(locid => this.placeMarkerStore[locid]);
+        }
+
+        getPlaceMarkersWithinBounds() {
+            return this.getPlaceMarkers()
+                .filter(marker => this.isLatLngWithinBounds(marker.options.place.latitude, marker.options.place.longitude))
+            ;
+        }
+
+        getPlaceMarkersOutOfBounds() {
+            return this.getPlaceMarkers()
+                .filter(marker => !this.isLatLngWithinBounds(marker.options.place.latitude, marker.options.place.longitude))
+            ;
+        }
+
+        isLatLngWithinBounds(lat, lng) {
+            const mapBounds = this.nbnTechMap.map.getBounds();
+            return lat > mapBounds.getSouth()
+                && lat < mapBounds.getNorth()
+                && lng > mapBounds.getWest()
+                && lng < mapBounds.getEast()
+            ;
         }
 
     }
@@ -181,7 +216,7 @@
          * @param {*} options 
          */
         constructor(options = {}) {
-            Object.assign(NbnTechMapDefaultOptions, options);
+            Object.assign(DEFAULT_OPTIONS, options);
 
             this.initMap(options.mapContainerId);
 
@@ -192,32 +227,9 @@
         }
 
         /**
-         * TODO: Migrate data storage to IndexedDB
-         */
-        db = null;
-        locStore = {};
-        
-        
-
-
-        requestDatabase() {
-            const dbRequest = window.indexedDB.open('nbntechmap', 1);
-            dbRequest.onerror = function(event) {
-                console.error("error opening database");
-                consoler.error(event);
-            };
-            dbRequest.onsuccess = function(event) {
-                console.log("success opening database");
-                this.db = event.target.result;
-            }
-        }
-
-        /**
          * Initialise Map
          */
         initMap(mapContainerId) {
-            // center of the map
-            var center = [-36.09882, 146.92223];
 
             // Create the map
             this.map = L.map(mapContainerId, { preferCanvas: true });
@@ -295,7 +307,7 @@
         }
     
         renderPoint(place) {
-            return L.circleMarker([ place.latitude, place.longitude], {
+            return L.circleMarker([ place.latitude, place.longitude ], {
                 radius: 5,
                 fillColor: getPlaceColour(place),
                 color: "#000000",
@@ -305,15 +317,6 @@
                 place,
             })
             .bindPopup((layer) => this.renderPopupContent(layer));
-        }
-
-        isLatLngWithinBounds(lat, lng) {
-            const mapBounds = this.map.getBounds();
-            return lat > mapBounds.getSouth()
-                && lat < mapBounds.getNorth()
-                && lng > mapBounds.getWest()
-                && lng < mapBounds.getEast()
-            ;
         }
 
         processFetchResult(result, north, east, south, west) {
@@ -326,9 +329,7 @@
 
             // Process places
             result.places.forEach(place => {
-                if (!this.locStore[place.locid]) {
-                    this.locStore[place.locid] = this.renderPoint(place);
-                }
+                this.datastore.storePlaceMarker(this.renderPoint(place));
             });
 
             this.refreshMarkersFromStore();
@@ -336,21 +337,13 @@
         }
 
         refreshMarkersFromStore() {
-            // Add markers to map
-            const mapBounds = this.map.getBounds();
 
-            const locsWithinBounds = Object.keys(this.locStore)
-                .filter(key => this.isLatLngWithinBounds(this.locStore[key].options.place.latitude, this.locStore[key].options.place.longitude))
-                .filter(key => this.markerGroup.markerGroup.hasLayer(this.locStore[key]) == false)
-                .map(key => this.locStore[key]);
-            ;
-            this.markerGroup.markerGroup.addLayers(locsWithinBounds);
+            const placeMarkersOutOfBounds = this.datastore.getPlaceMarkersOutOfBounds();
+            this.markerGroup.markerGroup.removeLayers(placeMarkersOutOfBounds);
 
-            const locsOutOfBounds = Object.keys(this.locStore)
-                .filter(key => !this.isLatLngWithinBounds(this.locStore[key].options.place.latitude, this.locStore[key].options.place.longitude))
-                .filter(key => this.markerGroup.markerGroup.hasLayer(this.locStore[key]) == true)
-                .map(key => this.locStore[key]);
-            this.markerGroup.markerGroup.removeLayers(locsOutOfBounds);
+            const placeMarkersWithinBounds = this.datastore.getPlaceMarkersWithinBounds()
+            this.markerGroup.markerGroup.addLayers(placeMarkersWithinBounds);
+
         }
 
         fetchData(north, east, south, west, page = 1) {
