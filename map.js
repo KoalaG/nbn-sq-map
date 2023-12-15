@@ -105,6 +105,7 @@
             this.nbnTechMap.refreshMarkersFromStore();
             this.nbnTechMap.controls.legend.refresh();
             this.nbnTechMap.controls.filter.refresh();
+            this.nbnTechMap.markerGroup.markerGroup.refreshClusters();
         }
 
         show() {
@@ -402,8 +403,19 @@
         }
 
         clusterIconCreate(cluster) {
+
+            const placeMarkers = cluster.getAllChildMarkers();
+
+            const colours = placeMarkers.map(marker => marker.options.fillColor);
+
+            let colour = colourUnknown;
+
+            if (colours.every(c => c == colours[0])) {
+                colour = colours[0];
+            }
+
             return L.divIcon({
-                html: '<div style="background-color: rgba(255,255,255,50)">' + cluster.getChildCount() + '</div>',
+                html: '<div style="background-color: '+ colour +'">' + cluster.getChildCount() + '</div>',
                 className: 'marker-cluster'
             });
         }
@@ -599,7 +611,7 @@
             // locate the user
             this.mapLocate = L.control.locate({
                 position: 'topleft',
-                setView: 'untilPan',
+                setView: '0untilPan',
                 initialZoomLevel: startPos.zoom || 16,
             }).addTo(this.map);
 
