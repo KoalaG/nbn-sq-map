@@ -520,6 +520,7 @@
 
         map = null;
         mapTileLayer = null;
+        mapLocate = null;
 
         // Stores API functions
         lipApi = null;
@@ -593,9 +594,21 @@
             const locateOnOpen = localStorage.getItem('locate') == 'true';
             const startPos = JSON.parse(localStorage.getItem('startpos'));
 
+
+
             // locate the user
+            this.mapLocate = L.control.locate({
+                position: 'topleft',
+                setView: 'untilPan',
+                keepCurrentZoomLevel: true,
+            }).addTo(this.map);
+
+            this.map.on('locateactivate', () => localStorage.setItem('locate', 'true'));
+            this.map.on('locatedeactivate', () => localStorage.setItem('locate', 'false'));
+
+
             if (locateOnOpen || !startPos) {
-                this.map.locate({ setView: true, maxZoom: 16 })
+                this.mapLocate.start();
             }
             else if( startPos ) {
                 this.map.setView([ startPos.lat, startPos.lng ], startPos.zoom);
@@ -781,6 +794,13 @@
         }
 
         fetchData(north, east, south, west, page = 1) {
+
+            if (page > 5) {
+                console.log('Stopping fetch. Too many pages.');
+                this.controls.zoomWarning.show();
+                return;
+            }
+
             this.lipApi
                 .fetchPage(north, east, south, west, page)
                 .then(data => this.processFetchResult(data, north, east, south, west))
