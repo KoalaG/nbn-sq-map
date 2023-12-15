@@ -533,6 +533,7 @@
         map = null;
         mapTileLayer = null;
         mapLocate = null;
+        mapSearch = null;
 
         // Stores API functions
         lipApi = null;
@@ -606,7 +607,16 @@
             const locateOnOpen = localStorage.getItem('locate') == 'true';
             const startPos = JSON.parse(localStorage.getItem('startpos'));
 
-
+            /** Setup geocoder */
+            this.mapSearch = new L.Control.GPlaceAutocomplete({
+                position: 'topleft',
+                prepend: true,
+                collapsed_mode: true,
+                callback: (place) => {
+                    var loc = place.geometry.location;
+                    this.map.setView( [loc.lat(), loc.lng()], 18);
+                }
+            }).addTo(this.map);
 
             // locate the user
             this.mapLocate = L.control.locate({
