@@ -24,10 +24,14 @@
     const colourEE_Z123_ZBC = '#FF7E01';
     const colourEE_Z123_BC  = '#E3071D';
     
-    const COL_TECH_AVAIL            = '#1D7044';
-    const COL_TECH_BUILDFINALISED   = '#75AD6F';
-    const COL_TECH_DESIGN           = '#C8E3C5';
-    const COL_TECH_COMMITTED        = '#FF7E01';
+    const COL_TECH_COMPLETE         = '#1D7044';
+    const COL_TECH_AVAIL            = '#02B9E3';
+    const COL_TECH_BUILDFINALISED   = '#FFBE00';
+    const COL_TECH_DESIGN           = '#FF7E01';
+    const COL_TECH_COMMITTED        = '#E3071D';
+
+    const COL_TECH_MDU_INBUILD      = '#022BE3';
+    const COL_TECH_MDU_ELIGIBLE     = '#6B02E3';
 
     const colourUnknown     = '#888888';
 
@@ -72,7 +76,7 @@
 
     class ControDisplayMode {
 
-        displayMode = 'all';
+        displayMode = 'upgrade';
 
         nbnTechMap = null;
         control = null;
@@ -100,6 +104,7 @@
             this.displayMode = mode;
             this.nbnTechMap.refreshMarkersFromStore();
             this.nbnTechMap.controls.legend.refresh();
+            this.nbnTechMap.controls.filter.refresh();
         }
 
         show() {
@@ -124,9 +129,9 @@
             this.allLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
             this.allRadio = L.DomUtil.create('input', 'control-input', this.allLabel);
             this.allRadio.type = 'radio';
-            this.allRadio.checked = true;
             this.allRadio.name = 'display-mode';
             this.allRadio.value = 'all';
+            this.allRadio.checked = this.displayMode == 'all';
             L.DomEvent.on(this.allRadio, 'change', (e) => this.changeMode('all'));
             this.allText = L.DomUtil.create('span', 'control-text', this.allLabel);
             this.allText.innerText = 'All';
@@ -136,6 +141,7 @@
             this.upgradeRadio.type = 'radio';
             this.upgradeRadio.name = 'display-mode';
             this.upgradeRadio.value = 'upgrade';
+            this.allRadio.checked = this.displayMode == 'upgrade';
             L.DomEvent.on(this.upgradeRadio, 'change', () => this.changeMode('upgrade'));
             this.upgradeText = L.DomUtil.create('span', 'control-text', this.upgradeLabel);
             this.upgradeText.innerText = 'Tech Upgrade';
@@ -145,6 +151,7 @@
             this.eeRadio.type = 'radio';
             this.eeRadio.name = 'display-mode';
             this.eeRadio.value = 'ee';
+            this.allRadio.checked = this.displayMode == 'ee';
             L.DomEvent.on(this.eeRadio, 'change', () => this.changeMode('ee'));
             this.eeText = L.DomUtil.create('span', 'control-text', this.eeLabel);
             this.eeText.innerText = 'EE';
@@ -170,12 +177,25 @@
 
 
         getLegendHTML() {
-            if (this.nbnTechMap.controls.displayMode?.displayMode == 'ee') {
-                return '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_CBD_ZBC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone CBD ($0 Build)<br>' + 
-                    '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_CBD_BC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone CBD (Build POA)<br>' +
-                    '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_Z123_ZBC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone 1/2/3 ($0 Build)<br>' +
-                    '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_Z123_BC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone 1/2/3 (Build POA)<br>';
 
+            if (this.nbnTechMap.controls.displayMode?.displayMode == 'ee') {
+                return '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_CBD_ZBC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone CBD ($0 Build)<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_CBD_BC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone CBD (Build POA)<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_Z123_ZBC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone 1/2/3 ($0 Build)<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourEE_Z123_BC+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Zone 1/2/3 (Build POA)<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourUnknown+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Unknown';
+            }
+
+            if (this.nbnTechMap.controls.displayMode?.displayMode == 'upgrade') {
+                return '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_COMPLETE +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Completed<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_AVAIL +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Available<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_BUILDFINALISED +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Build Finalised<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_DESIGN +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> In Design<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_COMMITTED +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Committed<br>'
+                + '<b>Multi Dwelling Units</b><br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_MDU_INBUILD +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> In Build<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ COL_TECH_MDU_ELIGIBLE +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Elligible<br>'
+                + '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourUnknown+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> Unknown';
             }
 
             return '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+colourFTTP+'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> FTTP<br>' + 
@@ -209,6 +229,134 @@
 
         refresh() {
             this.controlDiv.innerHTML = this.getLegendHTML();
+        }
+
+        show() {
+            this.control.addTo(this.nbnTechMap.map);
+        }
+
+        remove() {
+            this.control.remove();
+        }
+
+    }
+    
+    class ControlFilter {
+
+        nbnTechMap = null;
+        control = null;
+        controlDiv = null;
+
+        filters = {
+            targetQuarters: []
+        }
+        
+        constructor (nbnTechMap) {
+            this.nbnTechMap = nbnTechMap;
+            this.control = L.control({ position: 'bottomright' });
+            this.control.onAdd = (map) => this.addControlDiv(map);
+            this.show();
+        }
+
+        setControlDivContent() {
+
+            if (this.nbnTechMap.controls.displayMode?.displayMode == 'ee') {
+                this.control.remove();
+                this.controlDiv.innerHTML = '';
+                return;
+            }
+
+            if (this.nbnTechMap.controls.displayMode?.displayMode == 'upgrade') {
+                const div = L.DomUtil.create('div');
+                div.innerHTML = '<b>Filter</b><br>';
+                this.controlDiv.appendChild(div);
+
+
+                const targetQtr = {}
+                this.nbnTechMap.markerGroup.markerGroup.getLayers().forEach(marker => {
+                    if (marker.options.place.targetEligibilityQuarter) {
+                        targetQtr[marker.options.place.targetEligibilityQuarter] = (targetQtr[marker.options.place.targetEligibilityQuarter] || 0) + 1;
+                    }
+                });
+
+                Object.keys(targetQtr)
+                    .sort((aQtr, bQtr) => {
+                        if (aQtr == 'NA') return 1;
+                        if (bQtr == 'NA') return -1;
+
+                        const months = {
+                            'Jan': 1,
+                            'Feb': 2,
+                            'Mar': 3,
+                            'Apr': 4,
+                            'May': 5,
+                            'Jun': 6,
+                            'Jul': 7,
+                            'Aug': 8,
+                            'Sep': 9,
+                            'Oct': 10,
+                            'Nov': 11,
+                            'Dec': 12,
+                        };
+                        const [ aMonthShortName, aYear ] = aQtr.split(' ');
+                        const [ bMonthShortName, bYear ] = bQtr.split(' ');
+                        const aMonth = months[aMonthShortName];
+                        const bMonth = months[bMonthShortName];
+                        if (aYear < bYear) return -1;
+                        if (aYear > bYear) return 1;
+                        if (aMonth < bMonth) return -1;
+                        if (aMonth > bMonth) return 1;
+                        return 0;
+                    })
+                    .forEach(qtr => {
+                        const label = L.DomUtil.create('label', 'control-label', div);
+                        label.textContent = qtr + ' (' + targetQtr[qtr] + ')';
+                        label.appendChild(document.createElement('br'));
+
+                        const input = L.DomUtil.create('input', 'control-input', this.controlDiv)
+                        input.type = 'checkbox';
+                        input.checked = this.filters.targetQuarters.includes(qtr);
+                        L.DomEvent.on(input, 'change', (e) => {
+                            if (e.target.checked) {
+                                this.filters.targetQuarters.push(qtr);
+                            }
+                            else {
+                                this.filters.targetQuarters = this.filters.targetQuarters.filter(q => q != qtr);
+                            }
+                            this.nbnTechMap.refreshMarkersFromStore();
+                        });
+
+                        label.prepend(input);
+                    });
+
+                return div;
+            }
+
+            this.control.remove();
+            return this.controlDiv.innerHTML = '';
+            
+        }
+
+        addControlDiv(map) {
+
+            if (!this.controlDiv) {
+                this.controlDiv = L.DomUtil.create('div', 'info legend');
+            }
+
+            this.controlDiv.style.backgroundColor = "#ffffff";
+            this.controlDiv.style.opacity = "0.8";
+            this.controlDiv.style.padding = "5px";
+            this.controlDiv.style.borderRadius = "5px";
+            this.controlDiv.style.width = "150px";
+
+            this.setControlDivContent();
+
+            return this.controlDiv;
+        }
+
+        refresh() {
+            L.DomUtil.empty(this.controlDiv);
+            this.setControlDivContent();
         }
 
         show() {
@@ -387,6 +535,7 @@
             zoomWarning: null,
             legend: null,
             displayMode: null,
+            filter: null,
         }
 
         /**
@@ -403,8 +552,9 @@
             this.datastore = new MemoryDatastore(this);
             this.markerGroup = new MarkerGroup(this);
             this.controls.zoomWarning = new ControlZoomWarning(this);
-            this.controls.legend = new ControlLegend(this);
             this.controls.displayMode = new ControDisplayMode(this);
+            this.controls.legend = new ControlLegend(this);
+            this.controls.filter = new ControlFilter(this);
 
             this.initMap();
         }
@@ -440,8 +590,19 @@
             this.map.on('zoomend', (e) => this.mapChanged(e));
             this.map.on('moveend', (e) => this.mapChanged(e));
 
+            const locateOnOpen = localStorage.getItem('locate') == 'true';
+            const startPos = JSON.parse(localStorage.getItem('startpos'));
+
             // locate the user
-            this.map.locate({ setView: true, maxZoom: 16 })
+            if (locateOnOpen || !startPos) {
+                this.map.locate({ setView: true, maxZoom: 16 })
+            }
+            else if( startPos ) {
+                this.map.setView([ startPos.lat, startPos.lng ], startPos.zoom);
+            }
+            else {
+                this.map.setView([ -33.865143, 151.209900 ], 13);
+            }
 
         }
 
@@ -484,8 +645,13 @@
 
 
             popup += '<br />'; 
+
+            if (this.controls.displayMode.displayMode == 'upgrade') {
+                popup += '<b>Debug</b></br>';
+                popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
+            }
             
-            if (place.ee) {
+            if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
                 popup += '<b>Enterprise Ethernet</b></br>';
                 popup += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
                 popup += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
@@ -523,6 +689,31 @@
             });
 
             this.refreshMarkersFromStore();
+            this.controls.filter.refresh();
+
+        }
+
+        includePlaceInTechUpgrade(place) {
+            
+            // Don't include if no plans for upgrade
+            if (place.techChangeStatus == 'Not Planned') {
+                return false;
+            }
+
+            // Include if target quarter is selected
+            if (this.controls.filter.filters.targetQuarters.length > 0) {
+                if (this.controls.filter.filters.targetQuarters.includes(place.targetEligibilityQuarter)) {
+                    return true;
+                }
+                return false;
+            }
+
+            // Include if tech change status is not known
+            if (place.techChangeStatus) {
+                return true;
+            }
+
+            return false;
 
         }
 
@@ -531,7 +722,6 @@
             const placeMarkersOutOfBounds = this.datastore.getPlaceMarkersOutOfBounds();
             this.markerGroup.markerGroup.removeLayers(placeMarkersOutOfBounds);
 
-                
             const placeMarkersWithinBounds = this.datastore.getPlaceMarkersWithinBounds();
             
             if (this.controls.displayMode.displayMode == 'all') {
@@ -540,10 +730,10 @@
 
             if (this.controls.displayMode.displayMode == 'upgrade') {
                 this.markerGroup.markerGroup.removeLayers(
-                    placeMarkersWithinBounds.filter(placeMarker => !isPlaceFTTPSoon(placeMarker.options.place))
+                    placeMarkersWithinBounds.filter(placeMarker => !this.includePlaceInTechUpgrade(placeMarker.options.place))
                 );
                 this.markerGroup.markerGroup.addLayers(
-                    placeMarkersWithinBounds.filter(placeMarker => isPlaceFTTPSoon(placeMarker.options.place))
+                    placeMarkersWithinBounds.filter(placeMarker => this.includePlaceInTechUpgrade(placeMarker.options.place))
                 );
             }
 
@@ -573,6 +763,14 @@
 
         mapChanged(event) {
 
+            // Save location on move
+            localStorage.setItem('startpos', JSON.stringify({
+                lat: this.map.getCenter().lat,
+                lng: this.map.getCenter().lng,
+                zoom: this.map.getZoom(),
+            }));
+
+            // Only fetch data if zoomed in enough
             if(this.map.getZoom() < MIN_ZOOM_FOR_DATA_FETCH) {
                 this.markerGroup.remove();
                 this.controls.zoomWarning.show();
@@ -594,10 +792,9 @@
         
         }
 
-        
         getPlaceColour(place) {
 
-            /** CBD Pricing */
+            /** EE Display Mode */
             if (this.controls.displayMode.displayMode == 'ee') {
 
                 if(place.cbdpricing && place.zeroBuildCost) {
@@ -618,6 +815,22 @@
 
                 return colourUnknown;
 
+            }
+
+            if (this.controls.displayMode.displayMode == 'upgrade') {
+                
+                switch (place.techChangeStatus) {
+                    case 'Previous Tech Disconnected': return COL_TECH_COMPLETE;
+                    case 'New Tech Connected' : return COL_TECH_COMPLETE;
+                    case 'In Design': return COL_TECH_DESIGN;
+                    case 'Build Finalised': return COL_TECH_BUILDFINALISED;
+                    case 'Committed': return COL_TECH_COMMITTED;
+                    case 'Eligible To Order': return COL_TECH_AVAIL;
+                    case 'MDU Complex Eligible To Apply': return COL_TECH_MDU_ELIGIBLE;
+                    case 'MDU Complex Premises In Build': return COL_TECH_MDU_INBUILD;
+                }
+
+                return colourUnknown;
             }
 
             if (isPlaceFTTP(place)) {
