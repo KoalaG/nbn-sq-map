@@ -76,7 +76,7 @@
 
     class ControDisplayMode {
 
-        displayMode = 'upgrade';
+        displayMode = 'all';
 
         nbnTechMap = null;
         control = null;
@@ -131,7 +131,7 @@
             this.allRadio.type = 'radio';
             this.allRadio.name = 'display-mode';
             this.allRadio.value = 'all';
-            this.allRadio.checked = this.displayMode == 'all';
+            this.allRadio.checked = true;
             L.DomEvent.on(this.allRadio, 'change', (e) => this.changeMode('all'));
             this.allText = L.DomUtil.create('span', 'control-text', this.allLabel);
             this.allText.innerText = 'All';
@@ -141,7 +141,6 @@
             this.upgradeRadio.type = 'radio';
             this.upgradeRadio.name = 'display-mode';
             this.upgradeRadio.value = 'upgrade';
-            this.allRadio.checked = this.displayMode == 'upgrade';
             L.DomEvent.on(this.upgradeRadio, 'change', () => this.changeMode('upgrade'));
             this.upgradeText = L.DomUtil.create('span', 'control-text', this.upgradeLabel);
             this.upgradeText.innerText = 'Tech Upgrade';
@@ -151,7 +150,6 @@
             this.eeRadio.type = 'radio';
             this.eeRadio.name = 'display-mode';
             this.eeRadio.value = 'ee';
-            this.allRadio.checked = this.displayMode == 'ee';
             L.DomEvent.on(this.eeRadio, 'change', () => this.changeMode('ee'));
             this.eeText = L.DomUtil.create('span', 'control-text', this.eeLabel);
             this.eeText.innerText = 'EE';
@@ -332,7 +330,9 @@
                 return div;
             }
 
-            this.control.remove();
+            try {
+                this.control.remove();
+            } catch (e) {}
             return this.controlDiv.innerHTML = '';
             
         }
@@ -646,10 +646,10 @@
 
             popup += '<br />'; 
 
-            if (this.controls.displayMode.displayMode == 'upgrade') {
+            /*if (this.controls.displayMode.displayMode == 'upgrade') {
                 popup += '<b>Debug</b></br>';
                 popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
-            }
+            }*/
             
             if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
                 popup += '<b>Enterprise Ethernet</b></br>';
@@ -719,33 +719,59 @@
 
         refreshMarkersFromStore() {
 
+            /**
+             * Remove markers that are out of bounds
+             */
             const placeMarkersOutOfBounds = this.datastore.getPlaceMarkersOutOfBounds();
             this.markerGroup.markerGroup.removeLayers(placeMarkersOutOfBounds);
 
+            /**
+             * Get markers within bounds
+             */
             const placeMarkersWithinBounds = this.datastore.getPlaceMarkersWithinBounds();
-            
-            if (this.controls.displayMode.displayMode == 'all') {
-                this.markerGroup.markerGroup.addLayers(placeMarkersWithinBounds);
+
+            /**
+             * Function to filter markers we want to keep
+             * @param {*} placeMarker 
+             * @returns 
+             */
+            const markerFilter = (placeMarker) => {
+                
+                // Show all markers if display mode is all
+                if (this.controls.displayMode.displayMode == 'all') return true;
+
+                // Show only ee markers if display mode is ee
+                if (this.controls.displayMode.displayMode == 'ee') {
+                    return placeMarker.options.place.ee;
+                }
+
+                // Show only tech upgrade markers if display mode is upgrade
+                if (this.controls.displayMode.displayMode == 'upgrade') {
+                    return this.includePlaceInTechUpgrade(placeMarker.options.place);
+                }
+
+            };
+
+            // Filter markers
+            const filteredMarkers = placeMarkersWithinBounds.filter(markerFilter);
+
+            // If too many markers, remove marker group and show warning
+            console.log('Showing ' + filteredMarkers.length + ' markers');
+            if (filteredMarkers.length > 25000) {
+                this.markerGroup.remove();
+                this.controls.zoomWarning.show();
+            } else {
+                this.markerGroup.show();
             }
 
-            if (this.controls.displayMode.displayMode == 'upgrade') {
-                this.markerGroup.markerGroup.removeLayers(
-                    placeMarkersWithinBounds.filter(placeMarker => !this.includePlaceInTechUpgrade(placeMarker.options.place))
-                );
-                this.markerGroup.markerGroup.addLayers(
-                    placeMarkersWithinBounds.filter(placeMarker => this.includePlaceInTechUpgrade(placeMarker.options.place))
-                );
-            }
+            // Add filtered markers to map
+            this.markerGroup.markerGroup.addLayers(filteredMarkers);
 
-            if (this.controls.displayMode.displayMode == 'ee') {
-                this.markerGroup.markerGroup.removeLayers(
-                    placeMarkersWithinBounds.filter(placeMarker => !placeMarker.options.place.ee)
-                );
-                this.markerGroup.markerGroup.addLayers(
-                    placeMarkersWithinBounds.filter(placeMarker => placeMarker.options.place.ee)
-                );
-            }
+            // Remove unfiltered markers from map
+            const unFilteredMarkers = placeMarkersWithinBounds.filter(marker => !markerFilter(marker));
+            this.markerGroup.markerGroup.removeLayers(unFilteredMarkers);
 
+            // Refresh marker colours
             this.markerGroup.markerGroup.getLayers().forEach(marker => {
                 marker.setStyle({
                     fillColor: this.getPlaceColour(marker.options.place),
