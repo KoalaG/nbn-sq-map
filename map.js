@@ -600,12 +600,11 @@
             this.mapLocate = L.control.locate({
                 position: 'topleft',
                 setView: 'untilPan',
-                keepCurrentZoomLevel: true,
+                initialZoomLevel: 13,
             }).addTo(this.map);
 
             this.map.on('locateactivate', () => localStorage.setItem('locate', 'true'));
             this.map.on('locatedeactivate', () => localStorage.setItem('locate', 'false'));
-
 
             if (locateOnOpen || !startPos) {
                 this.mapLocate.start();
