@@ -13,6 +13,7 @@ export default interface IApi {
     fetchPage(
         bounds: L.LatLngBounds,
         page?: number,
+        proceed?: () => boolean,
     ): Promise<NbnPlaceApiResponse>;
 
 }

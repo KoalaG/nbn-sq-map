@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { NbnPlace, PointAndLocids } from "../types";
+import { LatLngLocidStorage, NbnPlace, PointAndLocids } from "../types";
 import IDatastore from '../interfaces/datastore.interface';
 
 import { IDBPDatabase, openDB } from 'idb'; // You need to install idb package
@@ -7,11 +7,12 @@ import { IDBPDatabase, openDB } from 'idb'; // You need to install idb package
 
 export class IndexDBDatastore implements IDatastore {
 
-    private dbPromise: Promise<IDBPDatabase>;
+    private db: IDBPDatabase;
 
     // Setup database
     constructor() {
-        this.dbPromise = openDB('nbn-tech-map', 1, {
+        console.log('Setting up database...');
+        openDB('nbn-tech-map', 1, {
             upgrade(db) {
 
                 const nbnPlaceStore = db.createObjectStore('nbnPlaceStore', { keyPath: 'locid' });
@@ -24,12 +25,33 @@ export class IndexDBDatastore implements IDatastore {
                 pointsStore.createIndex('longitude', 'longitude', { unique: false });
 
             },
+            blocked() {
+                console.warn('Database blocked!');
+            },
+            blocking() {
+                console.warn('Database blocking!');
+            },
+            terminated() {
+                console.warn('Database terminated!');
+            }
+        }).then((db) => {
+            console.log('Database ready!');
+            this.db = db;
+        }).catch((err) => {
+            console.error('Failed to open database: ', err);
+        })
+        .finally(() => {
+            console.log('Database setup complete.');
         });
+    }
+
+    isReady() : boolean {
+        return !!this.db;
     }
 
     async storePlace(place: NbnPlace): Promise<void> {
 
-        const db = await this.dbPromise;
+        const db = await this.db;
         const tx = db.transaction(['nbnPlaceStore', 'pointsStore'], 'readwrite', {
             'durability': 'relaxed',
         });
@@ -40,8 +62,8 @@ export class IndexDBDatastore implements IDatastore {
         const key = `${place.latitude},${place.longitude}`;
         let record = await store.get(key);
         if (record) {
-            // If the record exists, add the new locid to the 'locids' array
             record.locids.push(place.locid);
+            record.locids = [...new Set(record.locids)];
         } else {
             // If the record doesn't exist, create a new one with 'locids' as an array containing the new locid
             record = {
@@ -60,7 +82,7 @@ export class IndexDBDatastore implements IDatastore {
 
     async storePlaces(places: NbnPlace[]) : Promise<void> {
 
-        const db = await this.dbPromise;
+        const db = await this.db;
         const tx = db.transaction('nbnPlaceStore', 'readwrite', {
             'durability': 'relaxed',
         });
@@ -72,53 +94,39 @@ export class IndexDBDatastore implements IDatastore {
     }
 
     async getPlace(locid: string) : Promise<NbnPlace> {
-            
-        const db = await this.dbPromise;
-        const tx = db.transaction('nbnPlaceStore', 'readonly', {
-            'durability': 'relaxed',
-        });
-
-        return tx.store.get(locid);
-
+        const db = await this.db;
+        return await db.get('nbnPlaceStore', locid);
     }
 
     async getPlaces(): Promise<NbnPlace[]> {
-        
-        const db = await this.dbPromise;
-        const tx = db.transaction('nbnPlaceStore', 'readonly', {
-            'durability': 'relaxed',
-        });
-
-        return tx.store.getAll();
-
+        const db = await this.db;
+        return await db.getAll('nbnPlaceStore');
     }
 
     async getPoints() : Promise<PointAndLocids[]> {
-        const db = await this.dbPromise;
-        const tx = db.transaction('pointsStore', 'readonly');
-        return tx.store.getAll();
+        const db = await this.db;
+        return await db.getAll('pointsStore');
     }
 
     async getPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndLocids[]> {
-        const db = await this.dbPromise;
+        
+        const db = await this.db;
         const tx = db.transaction('pointsStore', 'readonly');
     
         const latitudeRange = IDBKeyRange.bound(bounds.getSouth(), bounds.getNorth());
         const longitudeRange = IDBKeyRange.bound(bounds.getWest(), bounds.getEast());
     
-        const placesByLatitude = await tx.store.index('latitude').getAll(latitudeRange) as PointAndLocids[];
+        const pointsByLatitude = await tx.store.index('latitude').getAll(latitudeRange) as ({ latlng: string } & PointAndLocids)[];
         const keysByLongitude = await tx.store.index('longitude').getAllKeys(longitudeRange) as string[];
-    
-        const placesWithinBounds = placesByLatitude.filter(place => keysByLongitude
-            .map(key=>key.split(',')[1]).includes(place.longitude.toString())
-        );
+     
+        await tx.done;
 
-        return placesWithinBounds;
+        return pointsByLatitude.filter(point => keysByLongitude.indexOf(point.latlng) !== -1);
     }
 
     async getPlacesAtLatLng(latitude: number, longitude: number) : Promise<NbnPlace[]> {
 
-        const db = await this.dbPromise;
+        const db = await this.db;
 
         const tx = db.transaction('nbnPlaceStore', 'readonly');
         const index = tx.store.index('latlng');

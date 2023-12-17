@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { LatLngLocidStorage, LatLngWithPlaces, LayerWithPlace, NbnPlace, NbnPlaceStore, PointAndLocids } from "../types";
+import { LatLngLocidStorage, NbnPlace, NbnPlaceStore, PointAndLocids } from "../types";
 import IDatastore from '../interfaces/datastore.interface';
 
 
@@ -7,6 +7,10 @@ export class MemoryDatastore implements IDatastore {
 
     private latLngIndex: LatLngLocidStorage = {};
     private nbnPlaceStore: NbnPlaceStore = {};
+
+    isReady() : boolean {
+        return true;
+    }
 
     /**
      * Store place markers 

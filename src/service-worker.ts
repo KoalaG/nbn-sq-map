@@ -33,10 +33,17 @@ self.addEventListener("activate", function (event) {
     );
 });
 
-self.addEventListener("fetch", async (event) => {
+self.addEventListener("fetch", function(event) {
 
-    // Skip cross-origin requests, like those for Google Analytics.
-    if (event.request.url.startsWith('chrome-extension://')) {
+    const request = event.request;
+
+    // Always fetch non-GET requests from the network
+    if (request.method !== "GET") {
+        event.respondWith(
+            fetch(request).catch(function () {
+                return caches.match("/offline");
+            }) as Promise<Response>
+        );
         return;
     }
 
@@ -92,6 +99,30 @@ self.addEventListener("fetch", async (event) => {
         }));
     }
 
+    if (event.request.url.startsWith(this.origin)) {
+        event.respondWith(
+            fetch(request)
+                .then(function (response) {
+                    // Stash a copy of this page in the cache
+                    const copy = response.clone();
+                    caches.open(`${cacheName}-other`).then(function (cache) {
+                        cache.put(request, copy);
+                    });
+                    return response;
+                })
+                .catch(function () {
+                    return caches.match(request).then(function (response) {
+                        // return the cache response or the /offline page.
+                        return response || caches.match("/offline");
+                    });
+                }) as Promise<Response>
+          );
+          return;
+      
+    }
+
+
+    console.log('Unhanled fetch event:', event.request.url);
     return;
 
 });

@@ -1,6 +1,8 @@
-import { LatLngWithPlaces, NbnPlace, PointAndLocids } from "../types";
+import { NbnPlace, PointAndLocids } from "../types";
 
 export default interface IDatastore {
+
+    isReady() : boolean;
     
     storePlace(place: NbnPlace) : Promise<void>;
     storePlaces(places: NbnPlace[]) : Promise<void>;

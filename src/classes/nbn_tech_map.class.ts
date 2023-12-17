@@ -38,11 +38,15 @@ export default class NbnTechMap {
     private mapLocate: any;
     private mapSearch: any;
 
-    // Stores map data
+    /**
+     * @Property {datastore} - Datastore object.
+     */
     private datastore: IDatastore;
 
-    // Stores marker group and functions
-    //markerGroup: MarkerGroup = null;
+    /**
+     * @Property {markerLayer} - Layer to hold markers
+     */
+    private markerLayer: L.LayerGroup;
 
     // Stores map controls
     controls: {[key: string]: any} = {
@@ -77,6 +81,10 @@ export default class NbnTechMap {
         // Add the layer to the map
         this.mapTileLayer.addTo(this.map);
 
+        // Create and add marker layer
+        this.markerLayer = L.layerGroup();
+        this.markerLayer.addTo(this.map);
+
         // Set default view (Centred over Australia)
         // Get the last map position from local storage
         // If no position is found, default to Australia
@@ -89,14 +97,17 @@ export default class NbnTechMap {
         }
         
         // store map position when moved or zoomed
-        this.map.on('moveend zoomend', () => {
+        this.map.on('moveend', async () => {
             const center = this.map.getCenter();
             const zoom = this.map.getZoom();
             localStorage.setItem('startpos', JSON.stringify({ lat: center.lat, lng: center.lng, zoom }));
+
+            await this.displayMarkersInCurrentView();
+            this.fetchDataForCurrentView();
         });
 
 
-        this.fetchDataForCurrentView();
+        this.displayMarkersInCurrentView();
 
         //this.createMap(options.mapContainerId);
         //this.datastore = new MemoryDatastore(this);
@@ -108,6 +119,7 @@ export default class NbnTechMap {
 
         //this.initMap();
     }
+
 
     /**
      * Initialise Map
@@ -163,11 +175,8 @@ export default class NbnTechMap {
 
     }
 
-    fetchDataForCurrentView() {
-
-        const bounds = this.map.getBounds();
-        console.log('Map Bounds:', bounds.toBBoxString());
-
+    getBoxesInBounds(bounds: L.LatLngBounds): L.LatLngBounds[] {
+            
         // Starting point should be the north-west corner of the map rounded beyond the map bounds
         // Latitude is rounded to 2 decimal places multiple of 0.02
         // Longitude is rounded to 2 decimal places multiple of 0.04
@@ -192,9 +201,76 @@ export default class NbnTechMap {
             return L.latLngBounds([south, west], [north, east]);
         });
 
+        return boxBounds;
+
+    }
+
+    /**
+     * Fetch boxes that are visible on the map
+     */
+    getCurrentViewBoxes(): L.LatLngBounds[]
+    {
+        return this.getBoxesInBounds(this.map.getBounds());
+    }
+
+    /**
+     * Hide markers that are outside the map bounds
+     */
+    hideMarkersOutsideCurrentView() {
+        // Hide markers that are outside the map bounds
+        const mapBounds = this.map.getBounds();
+        this.markerLayer.eachLayer((layer: L.CircleMarker) => {
+            if (!mapBounds.contains(layer.getLatLng())) {
+                this.markerLayer.removeLayer(layer);
+            }
+        });
+    }
+
+    /**
+     * Display markers that are inside the map bounds
+     */
+    async displayMarkersInCurrentView(attempt: number = 1) {
+
+        if (this.datastore.isReady() === false) {
+            
+            if (attempt > 10) {
+                console.error('Could not get datastore ready. Giving up.');
+                return;
+            }
+
+            console.warn('Datastore is not ready. Delaying displayMarkersInCurrentView()');
+            setTimeout(() => this.displayMarkersInCurrentView(attempt+1), 1000);
+            return;
+        }
+
+        console.log('Displaying markers in current view');
+        const mapBounds = this.map.getBounds();
+        
+        console.log('Fetching from Datastore', mapBounds);
+        this.refreshPointsFromStore(mapBounds);
+        
+    }
+
+    /**
+     * Fetch data for current map view
+     */
+    fetchDataForCurrentView() {
+
+        this.hideMarkersOutsideCurrentView();
+        this.displayMarkersInCurrentView();
+
+        // Get boxes that are currently visible
+        const boxes = this.getCurrentViewBoxes();
+
+        // Don't fetch boxes if more than 80
+        if (boxes.length > 80) {
+            console.warn('Too many boxes to fetch. Skipping.');
+            return;
+        }
+
         // Fetch each box
-        boxBounds.forEach((box, index) => {
-            this.fetchData(box, index+1);
+        boxes.forEach((box) => {
+            this.fetchData(box);
         });
         
     }
@@ -204,7 +280,7 @@ export default class NbnTechMap {
         console.log('Fetching page', page, 'of centrepoint', bounds.getCenter().toString());
 
         this.api
-            .fetchPage(bounds, page)
+            .fetchPage(bounds, page, () => this.map.getBounds().intersects(bounds))
             .then(data => this.processFetchResult(data, bounds))
             .catch(error => console.error(error))
         ;
@@ -215,30 +291,69 @@ export default class NbnTechMap {
         console.log('Processing page', (result.next || 2)-1, 'of', result.total, 'with', result.places.length, 'places.');
 
         // If more pages, start fetching next page
-        //if (result.next) {
-        //    console.log("Next page: ", result.next, 'of', result.total);
-        //    this.fetchData(bounds, result.next);
-        //}
+        if (result.next) {
+            this.fetchData(bounds, result.next);
+        }
 
         // Process places
+        console.log('Storing places.')
         const processPromises = result.places.map(place => {
             return this.datastore.storePlace(place);
         });
 
+        console.log('Waiting for place storing to finish');
         await Promise.all(processPromises);
 
-        this.refreshPointsFromStore();
-        //this.controls.filter.refresh();
+        // Refresh points inside bounds
+        console.log('Refreshing points inside bounds.');
+        await this.refreshPointsFromStore(bounds);
 
     }
 
-    async refreshPointsFromStore() {
+    async refreshPointsFromStore(bounds?: L.LatLngBounds) {
 
-        const points = await this.datastore.getPointsWithinBounds(this.map.getBounds());
-        console.log('Refreshing points from store. Found', points.length, 'points.');
+        // If bounds are not passed, use map bounds
+        if (!bounds) {
+            console.log('Bounds not passed. Using map bounds.');
+            bounds = this.map.getBounds();
+        }
 
-        console.log(points);
+        // Get the boxes
+        console.log('Refreshing points within bounds', bounds.toBBoxString());
+        console.log('this.markerLayer', this.markerLayer);
 
+        
+           
+        const points = await this.datastore.getPointsWithinBounds(bounds);
+            
+        // add points to map that don't already exist in layer
+        points.forEach(point => {
+
+            // If marker already exists, skip
+            if (this.markerLayer.getLayers().find((layer: L.CircleMarker) => layer.getLatLng().equals([point.latitude, point.longitude]))) {
+                return;
+            }
+
+            // Create marker
+            const marker = L.circleMarker([point.latitude, point.longitude], {
+                radius: 5,
+                //fillColor: this.getPlaceColour(place),
+                //color: "#000000",
+                weight: 1,
+                opacity: 1,
+                fillOpacity: 0.8,
+            });
+
+            // Add popup
+            marker.bindPopup(point.locids.join(', '));
+
+            // Add to layer
+            this.markerLayer.addLayer(marker);
+
+        });
+        
+
+        
         //this.markerGroup.clearLayers();
 
         //points.forEach(point => this.markerGroup.addPoint(point));
