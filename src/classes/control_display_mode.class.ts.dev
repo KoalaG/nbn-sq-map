@@ -1,0 +1,86 @@
+class ControDisplayMode {
+
+    displayMode = 'all';
+
+    nbnTechMap = null;
+    control = null;
+    controlDiv = null;
+
+    allLabel = null;
+    allRadio = null;
+    allText = null;
+    upgradeLabel = null;
+    upgradeRadio = null;
+    upgradeText = null;
+    eeLabel = null;
+    eeRadio = null;
+    eeText = null;
+    
+    constructor (nbnTechMap) {
+        this.nbnTechMap = nbnTechMap;
+        this.control = L.control({ position: 'topright' });
+        this.control.onAdd = () => this.addControlDiv();
+        this.show();
+    }
+    
+
+    changeMode(mode) {
+        this.displayMode = mode;
+        this.nbnTechMap.refreshMarkersFromStore();
+        this.nbnTechMap.controls.legend.refresh();
+        this.nbnTechMap.controls.filter.refresh();
+        this.nbnTechMap.markerGroup.markerGroup.refreshClusters();
+    }
+
+    show() {
+        this.control.addTo(this.nbnTechMap.map);
+    }
+
+    remove() {
+        this.control.remove();
+    }
+
+    addControlDiv() {
+
+        if (!this.controlDiv) {
+            this.controlDiv = L.DomUtil.create('div', 'info legend');
+        }
+
+        this.controlDiv.style.backgroundColor = "#ffffff";
+        this.controlDiv.style.opacity = "0.8";
+        this.controlDiv.style.padding = "5px";
+        this.controlDiv.style.borderRadius = "5px";
+        
+        this.allLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
+        this.allRadio = L.DomUtil.create('input', 'control-input', this.allLabel);
+        this.allRadio.type = 'radio';
+        this.allRadio.name = 'display-mode';
+        this.allRadio.value = 'all';
+        this.allRadio.checked = true;
+        L.DomEvent.on(this.allRadio, 'change', (e) => this.changeMode('all'));
+        this.allText = L.DomUtil.create('span', 'control-text', this.allLabel);
+        this.allText.innerText = 'All';
+
+        this.upgradeLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
+        this.upgradeRadio = L.DomUtil.create('input', 'control-input', this.upgradeLabel);
+        this.upgradeRadio.type = 'radio';
+        this.upgradeRadio.name = 'display-mode';
+        this.upgradeRadio.value = 'upgrade';
+        L.DomEvent.on(this.upgradeRadio, 'change', () => this.changeMode('upgrade'));
+        this.upgradeText = L.DomUtil.create('span', 'control-text', this.upgradeLabel);
+        this.upgradeText.innerText = 'Tech Upgrade';
+
+        this.eeLabel = L.DomUtil.create('label', 'control-label', this.controlDiv);
+        this.eeRadio = L.DomUtil.create('input', 'control-input', this.eeLabel);
+        this.eeRadio.type = 'radio';
+        this.eeRadio.name = 'display-mode';
+        this.eeRadio.value = 'ee';
+        L.DomEvent.on(this.eeRadio, 'change', () => this.changeMode('ee'));
+        this.eeText = L.DomUtil.create('span', 'control-text', this.eeLabel);
+        this.eeText.innerText = 'EE';
+
+        return this.controlDiv;
+
+    }
+
+}

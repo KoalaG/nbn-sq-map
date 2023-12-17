@@ -1,0 +1,130 @@
+
+export default class ControlFilter {
+
+    nbnTechMap = null;
+    control = null;
+    controlDiv = null;
+
+    filters = {
+        targetQuarters: []
+    }
+    
+    constructor (nbnTechMap) {
+        this.nbnTechMap = nbnTechMap;
+        this.control = L.control({ position: 'bottomright' });
+        this.control.onAdd = (map) => this.addControlDiv(map);
+        this.show();
+    }
+
+    setControlDivContent() {
+
+        if (this.nbnTechMap.controls.displayMode?.displayMode == 'ee') {
+            this.control.remove();
+            this.controlDiv.innerHTML = '';
+            return;
+        }
+
+        if (this.nbnTechMap.controls.displayMode?.displayMode == 'upgrade') {
+            const div = L.DomUtil.create('div');
+            div.innerHTML = '<b>Filter</b><br>';
+            this.controlDiv.appendChild(div);
+
+
+            const targetQtr = {}
+            this.nbnTechMap.markerGroup.markerGroup.getLayers().forEach(marker => {
+                if (marker.options.place.targetEligibilityQuarter) {
+                    targetQtr[marker.options.place.targetEligibilityQuarter] = (targetQtr[marker.options.place.targetEligibilityQuarter] || 0) + 1;
+                }
+            });
+
+            Object.keys(targetQtr)
+                .sort((aQtr, bQtr) => {
+                    if (aQtr == 'NA') return 1;
+                    if (bQtr == 'NA') return -1;
+
+                    const months = {
+                        'Jan': 1,
+                        'Feb': 2,
+                        'Mar': 3,
+                        'Apr': 4,
+                        'May': 5,
+                        'Jun': 6,
+                        'Jul': 7,
+                        'Aug': 8,
+                        'Sep': 9,
+                        'Oct': 10,
+                        'Nov': 11,
+                        'Dec': 12,
+                    };
+                    const [ aMonthShortName, aYear ] = aQtr.split(' ');
+                    const [ bMonthShortName, bYear ] = bQtr.split(' ');
+                    const aMonth = months[aMonthShortName];
+                    const bMonth = months[bMonthShortName];
+                    if (aYear < bYear) return -1;
+                    if (aYear > bYear) return 1;
+                    if (aMonth < bMonth) return -1;
+                    if (aMonth > bMonth) return 1;
+                    return 0;
+                })
+                .forEach(qtr => {
+                    const label = L.DomUtil.create('label', 'control-label', div);
+                    label.textContent = qtr + ' (' + targetQtr[qtr] + ')';
+                    label.appendChild(document.createElement('br'));
+
+                    const input = L.DomUtil.create('input', 'control-input', this.controlDiv)
+                    input.type = 'checkbox';
+                    input.checked = this.filters.targetQuarters.includes(qtr);
+                    L.DomEvent.on(input, 'change', (e) => {
+                        if (e.target.checked) {
+                            this.filters.targetQuarters.push(qtr);
+                        }
+                        else {
+                            this.filters.targetQuarters = this.filters.targetQuarters.filter(q => q != qtr);
+                        }
+                        this.nbnTechMap.refreshMarkersFromStore();
+                    });
+
+                    label.prepend(input);
+                });
+
+            return div;
+        }
+
+        try {
+            this.control.remove();
+        } catch (e) {}
+        return this.controlDiv.innerHTML = '';
+        
+    }
+
+    addControlDiv(map) {
+
+        if (!this.controlDiv) {
+            this.controlDiv = L.DomUtil.create('div', 'info legend');
+        }
+
+        this.controlDiv.style.backgroundColor = "#ffffff";
+        this.controlDiv.style.opacity = "0.8";
+        this.controlDiv.style.padding = "5px";
+        this.controlDiv.style.borderRadius = "5px";
+        this.controlDiv.style.width = "150px";
+
+        this.setControlDivContent();
+
+        return this.controlDiv;
+    }
+
+    refresh() {
+        L.DomUtil.empty(this.controlDiv);
+        this.setControlDivContent();
+    }
+
+    show() {
+        this.control.addTo(this.nbnTechMap.map);
+    }
+
+    remove() {
+        this.control.remove();
+    }
+
+}
