@@ -21,6 +21,14 @@ export default class LipApi implements IApi {
         }
         
         page = Math.max(1, Number(page));
+
+        const pageUrl = `https://api.lip.net.au/nbn-bulk/map/${north}/${east}/${south}/${west}?page=${page}`;
+
+        // Check if page has already been loaded this session.
+        const cache = sessionStorage.getItem(pageUrl);
+        if (cache) {
+            throw new Error('Page already loaded this session.');
+        }
         
         return await new Promise((resolve, reject) => {
 
@@ -32,6 +40,7 @@ export default class LipApi implements IApi {
             .then(result => {
                 const parsedResult = JSON.parse(result) as { data: NbnPlaceApiResponse};
                 resolve(parsedResult.data);
+                sessionStorage.setItem(pageUrl, '1');
             })
             .catch(reject);
 

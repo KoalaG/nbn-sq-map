@@ -54,6 +54,7 @@ export class MemoryDatastore implements IDatastore {
             .map((latLng) => {
                 const [ latitude, longitude ] = latLng.split(',').map(Number);
                 return {
+                    latlng: latLng,
                     latitude, longitude,
                     locids: this.latLngIndex[latLng],
                 };

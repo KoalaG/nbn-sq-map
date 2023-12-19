@@ -27,6 +27,7 @@ function ready(fn: () => void) {
     }
 }
 
+/*
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/service-worker.js').then(registration => {
@@ -35,7 +36,7 @@ if ('serviceWorker' in navigator) {
             console.log('SW registration failed: ', registrationError);
         });
     });
-}
+}*/
 
 // Execute when DOM is ready.
 ready(function() {

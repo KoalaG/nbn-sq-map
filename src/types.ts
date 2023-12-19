@@ -9,6 +9,7 @@ export type NbnTechMapOptions = {
 }
 
 export type PointAndLocids = {
+    latlng: string;
     latitude: number;
     longitude: number;
     locids: string[];
@@ -37,6 +38,7 @@ export type NbnPlace = {
     address2: string;
 
     techType: string;
+    reasonCode: string;
     altReasonCode: string;
     techChangeStatus: string;
     programType: string;

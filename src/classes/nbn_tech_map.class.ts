@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
 
-import { NbnPlaceApiResponse, NbnTechMapOptions } from '../types';
+import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from '../types';
 //import MarkerGroup from './marker_group.class.ts.dev';
 //import ControlZoomWarning from './control_zoom_warning.class';
 //import ControlFilter from './control_filter.class';
@@ -12,6 +12,14 @@ import { NbnPlaceApiResponse, NbnTechMapOptions } from '../types';
 //import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'
 import IApi from '../interfaces/api.interface';
 import IDatastore from '../interfaces/datastore.interface';
+
+export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
+    const north = Math.ceil(bounds.getNorth() * 50) / 50;
+    const west = Math.floor(bounds.getWest() * 25) / 25;
+    const south = Math.floor(bounds.getSouth() * 50) / 50;
+    const east = Math.ceil(bounds.getEast() * 25) / 25;
+    return L.latLngBounds([south, west], [north, east]);
+}
 
 export default class NbnTechMap {
 
@@ -218,7 +226,7 @@ export default class NbnTechMap {
      */
     hideMarkersOutsideCurrentView() {
         // Hide markers that are outside the map bounds
-        const mapBounds = this.map.getBounds();
+        const mapBounds = this.map.getBounds().pad(0.5);
         this.markerLayer.eachLayer((layer: L.CircleMarker) => {
             if (!mapBounds.contains(layer.getLatLng())) {
                 this.markerLayer.removeLayer(layer);
@@ -244,7 +252,7 @@ export default class NbnTechMap {
         }
 
         console.log('Displaying markers in current view');
-        const mapBounds = this.map.getBounds();
+        const mapBounds = roundBounds(this.map.getBounds());
         
         console.log('Fetching from Datastore', mapBounds);
         this.refreshPointsFromStore(mapBounds);
@@ -281,8 +289,15 @@ export default class NbnTechMap {
 
         this.api
             .fetchPage(bounds, page, () => this.map.getBounds().intersects(bounds))
-            .then(data => this.processFetchResult(data, bounds))
-            .catch(error => console.error(error))
+            .then(data => {
+                this.processFetchResult(data, bounds)
+            })
+            .catch(error => {
+                if (error.message == 'Page already loaded this session.') {
+                    return;
+                }
+                console.error(error)
+            })
         ;
     }
 
@@ -297,12 +312,9 @@ export default class NbnTechMap {
 
         // Process places
         console.log('Storing places.')
-        const processPromises = result.places.map(place => {
-            return this.datastore.storePlace(place);
-        });
-
+        const processPromise = this.datastore.storePlaces(result.places);
         console.log('Waiting for place storing to finish');
-        await Promise.all(processPromises);
+        await processPromise;
 
         // Refresh points inside bounds
         console.log('Refreshing points inside bounds.');
@@ -318,23 +330,16 @@ export default class NbnTechMap {
             bounds = this.map.getBounds();
         }
 
+        bounds = roundBounds(bounds);
+
         // Get the boxes
         console.log('Refreshing points within bounds', bounds.toBBoxString());
-        console.log('this.markerLayer', this.markerLayer);
-
-        
-           
         const points = await this.datastore.getPointsWithinBounds(bounds);
             
         // add points to map that don't already exist in layer
-        points.forEach(point => {
+        for (let i = 0; i < points.length; i++) {
+            const point = points[i];
 
-            // If marker already exists, skip
-            if (this.markerLayer.getLayers().find((layer: L.CircleMarker) => layer.getLatLng().equals([point.latitude, point.longitude]))) {
-                return;
-            }
-
-            // Create marker
             const marker = L.circleMarker([point.latitude, point.longitude], {
                 radius: 5,
                 //fillColor: this.getPlaceColour(place),
@@ -345,20 +350,73 @@ export default class NbnTechMap {
             });
 
             // Add popup
-            marker.bindPopup(point.locids.join(', '));
+            marker.bindPopup(point.locids.join('<br />'));
+            marker.on('popupopen', (event) => {
+                this.renderPopupContent(point)
+                    .then(content => event.popup.setContent(content));
+            })
 
-            // Add to layer
             this.markerLayer.addLayer(marker);
 
-        });
+        }
+
+    }
+
+    async renderPopupContent(point: PointAndLocids) {
+
+        const places = point.locids.map(locid => this.datastore.getPlace(locid));
+        const place = await places[0];
+
+        let popup = '<b>'+place.locid+'</b></br>'
+            + place.address1 + '</br>'
+            + place.address2 + '</br>'
+            + '<br />';
+            
+        popup += '<b>Technology Plan</b></br>';
+
+        /** Technology Plan Final State */
+        if (place.techType == 'FTTP'
+            || !place.altReasonCode
+            || place.altReasonCode == 'NULL_NA'
+        ) {
+            popup += 'Technology: ' + place.techType + '<br />';
+            if (place.techType != 'FTTP') {
+                popup += 'No tech upgrade planned<br />';
+            }
+        } 
         
-
+        else if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+            popup += 'Current: ' + place.techType + '<br />';
+            popup += 'Change: ' + place.altReasonCode + '<br />';
+            popup += 'Status: ' + place.techChangeStatus + '<br />';
+            popup += 'Program: ' + place.programType + '<br />';
+            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        }
         
-        //this.markerGroup.clearLayers();
+        else {
+            popup += 'Current: ' + place.techType + '<br />';
+            popup += 'Change: ' + place.altReasonCode + '<br />';
+            popup += 'Status: ' + place.techChangeStatus + '<br />';
+            popup += 'Program: ' + place.programType + '<br />';
+            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        }
 
-        //points.forEach(point => this.markerGroup.addPoint(point));
 
-        //this.markerGroup.refresh();
+        popup += '<br />'; 
+
+        /*if (this.controls.displayMode.displayMode == 'upgrade') {
+            popup += '<b>Debug</b></br>';
+            popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
+        }*/
+        
+        /*if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
+            popup += '<b>Enterprise Ethernet</b></br>';
+            popup += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
+            popup += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
+            popup += '<br />';
+        }*/
+
+        return popup;
 
     }
 
