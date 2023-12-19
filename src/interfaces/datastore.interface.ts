@@ -1,4 +1,4 @@
-import { NbnPlace, PointAndLocids } from "../types";
+import { NbnPlace, PointAndLocids, PointAndPlaces } from "../types";
 
 export default interface IDatastore {
 
@@ -12,6 +12,7 @@ export default interface IDatastore {
 
     getPoints() : Promise<PointAndLocids[]>;
     getPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndLocids[]>;
+    getFullPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndPlaces[]>;
 
     getPlacesAtLatLng(latitude: number, longitude: number) : Promise<NbnPlace[]>;
 

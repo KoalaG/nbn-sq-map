@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { LatLngLocidStorage, NbnPlace, NbnPlaceStore, PointAndLocids } from "../types";
+import { LatLngLocidStorage, NbnPlace, NbnPlaceStore, PointAndLocids, PointAndPlaces } from "../types";
 import IDatastore from '../interfaces/datastore.interface';
 
 
@@ -65,6 +65,16 @@ export class MemoryDatastore implements IDatastore {
     async getPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndLocids[]> {
         const points = (await this.getPoints())
             .filter(({ latitude, longitude }) => this.isLatLngWithinBounds(latitude, longitude, bounds))
+        return points;
+    }
+
+    async getFullPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndPlaces[]> {
+        const points = (await this.getPoints())
+            .filter(({ latitude, longitude }) => this.isLatLngWithinBounds(latitude, longitude, bounds))
+            .map(({ latlng, latitude, longitude, locids }) => ({
+                latlng, latitude, longitude,
+                places: locids.map(locid => this.nbnPlaceStore[locid]),
+            }))
         return points;
     }
 

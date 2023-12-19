@@ -3,7 +3,9 @@ import IDatastore from "./datastore.interface";
 
 export default interface IMarkerLayer {
 
-    constructor(map: L.Map, datastore: IDatastore): void;
+    setMap(map: L.Map): ThisType<this>;
+    
+    setDatastore(datastore: IDatastore): ThisType<this>;
 
     refreshMarkersInsideBounds(bounds: L.LatLngBounds): void;
 

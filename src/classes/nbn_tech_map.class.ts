@@ -12,6 +12,8 @@ import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from
 //import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'
 import IApi from '../interfaces/api.interface';
 import IDatastore from '../interfaces/datastore.interface';
+import IMarkerLayer from '../interfaces/markerlayer.interface';
+import MarkerLayerCluster from './markerlayer.cluster.class';
 
 export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const north = Math.ceil(bounds.getNorth() * 50) / 50;
@@ -54,7 +56,7 @@ export default class NbnTechMap {
     /**
      * @Property {markerLayer} - Layer to hold markers
      */
-    private markerLayer: L.LayerGroup;
+    private markerLayer: IMarkerLayer;
 
     // Stores map controls
     controls: {[key: string]: any} = {
@@ -90,8 +92,9 @@ export default class NbnTechMap {
         this.mapTileLayer.addTo(this.map);
 
         // Create and add marker layer
-        this.markerLayer = L.layerGroup();
-        this.markerLayer.addTo(this.map);
+        this.markerLayer = new MarkerLayerCluster();
+        this.markerLayer.setMap(this.map);
+        this.markerLayer.setDatastore(this.datastore);
 
         // Set default view (Centred over Australia)
         // Get the last map position from local storage
@@ -227,11 +230,7 @@ export default class NbnTechMap {
     hideMarkersOutsideCurrentView() {
         // Hide markers that are outside the map bounds
         const mapBounds = this.map.getBounds().pad(0.5);
-        this.markerLayer.eachLayer((layer: L.CircleMarker) => {
-            if (!mapBounds.contains(layer.getLatLng())) {
-                this.markerLayer.removeLayer(layer);
-            }
-        });
+        this.markerLayer.removeMarkersOutsideBounds(mapBounds);
     }
 
     /**
@@ -331,7 +330,9 @@ export default class NbnTechMap {
         }
 
         bounds = roundBounds(bounds);
+        this.markerLayer.refreshMarkersInsideBounds(bounds);
 
+        /*
         // Get the boxes
         console.log('Refreshing points within bounds', bounds.toBBoxString());
         const points = await this.datastore.getPointsWithinBounds(bounds);
@@ -359,64 +360,7 @@ export default class NbnTechMap {
             this.markerLayer.addLayer(marker);
 
         }
-
-    }
-
-    async renderPopupContent(point: PointAndLocids) {
-
-        const places = point.locids.map(locid => this.datastore.getPlace(locid));
-        const place = await places[0];
-
-        let popup = '<b>'+place.locid+'</b></br>'
-            + place.address1 + '</br>'
-            + place.address2 + '</br>'
-            + '<br />';
-            
-        popup += '<b>Technology Plan</b></br>';
-
-        /** Technology Plan Final State */
-        if (place.techType == 'FTTP'
-            || !place.altReasonCode
-            || place.altReasonCode == 'NULL_NA'
-        ) {
-            popup += 'Technology: ' + place.techType + '<br />';
-            if (place.techType != 'FTTP') {
-                popup += 'No tech upgrade planned<br />';
-            }
-        } 
-        
-        else if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
-            popup += 'Current: ' + place.techType + '<br />';
-            popup += 'Change: ' + place.altReasonCode + '<br />';
-            popup += 'Status: ' + place.techChangeStatus + '<br />';
-            popup += 'Program: ' + place.programType + '<br />';
-            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
-        }
-        
-        else {
-            popup += 'Current: ' + place.techType + '<br />';
-            popup += 'Change: ' + place.altReasonCode + '<br />';
-            popup += 'Status: ' + place.techChangeStatus + '<br />';
-            popup += 'Program: ' + place.programType + '<br />';
-            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
-        }
-
-
-        popup += '<br />'; 
-
-        /*if (this.controls.displayMode.displayMode == 'upgrade') {
-            popup += '<b>Debug</b></br>';
-            popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
-        }*/
-        
-        /*if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
-            popup += '<b>Enterprise Ethernet</b></br>';
-            popup += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
-            popup += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
-            popup += '<br />';
-        }*/
-
-        return popup;
+        */
 
     }
 

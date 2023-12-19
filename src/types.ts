@@ -15,6 +15,13 @@ export type PointAndLocids = {
     locids: string[];
 }
 
+export type PointAndPlaces = {
+    latlng: string;
+    latitude: number;
+    longitude: number;
+    places: NbnPlace[];
+}
+
 export type LatLngWithPlaces = {
     latitude: number;
     longitude: number;

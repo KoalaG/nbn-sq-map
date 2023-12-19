@@ -1,9 +1,9 @@
 import IDatastore from "../interfaces/datastore.interface";
 import IMarkerLayer from "../interfaces/markerlayer.interface";
+import 'leaflet.markercluster';
 
 import * as L from "leaflet";
-import { MarkerClusterGroup } from "leaflet";
-import { NbnPlace, PointAndLocids } from "../types";
+import { NbnPlace, PointAndLocids, PointAndPlaces } from "../types";
 
 // Constant Colours
 const colourFTTP 		= '#1D7044';
@@ -120,51 +120,170 @@ export default class MarkerLayerCluster implements IMarkerLayer {
     private map: L.Map;
     private datastore: IDatastore;
 
-    private markers: MarkerClusterGroup;
+    private markers: L.MarkerClusterGroup;
 
-    constructor(map: L.Map, datastore: IDatastore) {
-        this.map = map;
-        this.datastore = datastore;
-
-        this.markers = new MarkerClusterGroup({
-            chunkedLoading: true,
+    constructor() {
+        this.markers = new L.MarkerClusterGroup({
+            maxClusterRadius: this.markerClusterRadius,
             spiderfyOnMaxZoom: false,
+            disableClusteringAtZoom: 18,
             showCoverageOnHover: false,
-            zoomToBoundsOnClick: false,
+            zoomToBoundsOnClick: true,
+            removeOutsideVisibleBounds: true,
+            chunkedLoading: true,
+            chunkProgress: (processed, total, elapsed) => {
+                console.log('chunkProgress', processed, total, elapsed);
+            },
         });
-
-        this.markers.addTo(this.map);
     }
 
+    markerClusterRadius(zoom: number) {
+        switch(zoom) {
+            case 13: return 24;
+            case 14: return 23;
+            case 15: return 20;
+            default: return 0;
+        }
+    }
+
+    setMap(map: L.Map) {
+        if (this.map) {
+            this.map.removeLayer(this.markers);
+        }
+        this.map = map;
+        this.markers.addTo(this.map);
+        this.map.on('zoomend', () => {
+            console.log('zoomend', this.map.getZoom());
+        });
+        return this;
+    }
+    setDatastore(datastore: IDatastore): ThisType<this> {
+        this.datastore = datastore;
+        return this;
+    }
+
+
+    private points: {
+        [latLngString: string]: {
+            layer: L.Layer,
+            point: PointAndPlaces,
+        }
+    } = {};
+
     async refreshMarkersInsideBounds(bounds: L.LatLngBounds) {
-        const points = await this.datastore.getPointsWithinBounds(bounds);
-        this.markers.addLayers(points.map(point => this.renderPoint(point)));
+
+        const newPoints = await this.datastore.getFullPointsWithinBounds(bounds);
+        
+        newPoints.forEach(point => {
+            const latLngString = point.latlng;
+            if (!this.points[latLngString]) {
+                this.points[latLngString] = {
+                    layer: this.renderPoint(point),
+                    point,
+                };
+            } else {
+                this.points[latLngString].point = point;
+            }
+        });
+
+        this.markers.addLayers(Object.values(this.points).map(p => p.layer));
     }
 
     async removeMarkersOutsideBounds(bounds: L.LatLngBounds) {
-        const removeMarkers = this.markers.getLayers()
-            .filter((layer: L.CircleMarker) => !bounds.contains(layer.getLatLng()))
-        ;
-
-        this.markers.removeLayers(removeMarkers);
+        // We don't need to do anything here, as the marker cluster plugin handles this for us
+        //const removeMarkers = this.markers.getLayers()
+        //    .filter((layer: L.CircleMarker) => !bounds.contains(layer.getLatLng()))
+        //;
+        //this.markers.removeLayers(removeMarkers);
     }
 
     async removeAllMarkers(): Promise<void> {
         this.markers.clearLayers();
     }
 
-    renderPoint(point: PointAndLocids): L.Layer {
+    renderPoint(point: PointAndPlaces): L.Layer {
 
         const circleMarkerLayer = L.circleMarker([ point.latitude, point.longitude ], {
             radius: 5,
-            fillColor: colourFTTP, //this.getPlaceColour(place),
+            fillColor: this.getPlaceColour(point.places[0]), //this.getPlaceColour(place),
             color: "#000000",
             weight: 1,
             opacity: 1,
             fillOpacity: 0.8,
         });
+
+        circleMarkerLayer.bindPopup(() => this.renderPopupContent(point), {
+            autoPan: true,
+            autoClose: false,
+        });
+
+        circleMarkerLayer.bindTooltip((layer) => {
+            return this.points[point.latlng].point.places.map((place) => place.address1).join(', ')
+        }, {
+            
+        });
         
         return circleMarkerLayer;
+
+    }
+
+    
+
+    renderPopupContent(point: PointAndPlaces) {
+
+        const places = point.places;
+        const place = places[0];
+
+        let popup = '<b>'+place.locid+'</b></br>'
+            + place.address1 + '</br>'
+            + place.address2 + '</br>'
+            + '<br />';
+            
+        popup += '<b>Technology Plan</b></br>';
+
+        /** Technology Plan Final State */
+        if (place.techType == 'FTTP'
+            || !place.altReasonCode
+            || place.altReasonCode == 'NULL_NA'
+        ) {
+            popup += 'Technology: ' + place.techType + '<br />';
+            if (place.techType != 'FTTP') {
+                popup += 'No tech upgrade planned<br />';
+            }
+        } 
+        
+        else if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+            popup += 'Current: ' + place.techType + '<br />';
+            popup += 'Change: ' + place.altReasonCode + '<br />';
+            popup += 'Status: ' + place.techChangeStatus + '<br />';
+            popup += 'Program: ' + place.programType + '<br />';
+            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        }
+        
+        else {
+            popup += 'Current: ' + place.techType + '<br />';
+            popup += 'Change: ' + place.altReasonCode + '<br />';
+            popup += 'Status: ' + place.techChangeStatus + '<br />';
+            popup += 'Program: ' + place.programType + '<br />';
+            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        }
+
+
+        popup += '<br />'; 
+
+        /*if (this.controls.displayMode.displayMode == 'upgrade') {
+            popup += '<b>Debug</b></br>';
+            popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
+        }*/
+        
+        /*if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
+            popup += '<b>Enterprise Ethernet</b></br>';
+            popup += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
+            popup += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
+            popup += '<br />';
+        }*/
+
+        return popup;
 
     }
 

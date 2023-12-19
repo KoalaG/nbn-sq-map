@@ -1,5 +1,5 @@
 import * as L from 'leaflet';
-import { LatLngLocidStorage, NbnPlace, PointAndLocids } from "../types";
+import { LatLngLocidStorage, NbnPlace, PointAndLocids, PointAndPlaces } from "../types";
 import IDatastore from '../interfaces/datastore.interface';
 
 import { DBSchema, IDBPDatabase, openDB } from 'idb'; // You need to install idb package
@@ -183,6 +183,35 @@ export class IndexDBDatastore implements IDatastore {
         await tx.done;
 
         return pointsByLatitude.filter(point => keysByLongitude.indexOf(point.latlng) !== -1);
+    }
+
+    async getFullPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndPlaces[]> {
+        
+        const db = await this.db;
+        const tx = db.transaction(['pointsStore', 'nbnPlaceStore'], 'readonly');
+
+        const pointStore = tx.objectStore('pointsStore');
+        const placeStore = tx.objectStore('nbnPlaceStore');
+    
+        const latitudeRange = IDBKeyRange.bound(bounds.getSouth(), bounds.getNorth());
+        const longitudeRange = IDBKeyRange.bound(bounds.getWest(), bounds.getEast());
+    
+        const pointsByLatitude = await pointStore.index('latitude').getAll(latitudeRange) as ({ latlng: string } & PointAndLocids)[];
+        const keysByLongitude = await pointStore.index('longitude').getAllKeys(longitudeRange) as string[];
+     
+        const points = pointsByLatitude.filter(point => keysByLongitude.indexOf(point.latlng) !== -1);
+
+        const pointsWithPlaces = await Promise.all(points.map(async point => {
+            const places = await Promise.all(point.locids.map(async locid => await placeStore.get(locid)));
+            return {
+                ...point,
+                places,
+            };
+        }));
+
+        await tx.done;
+
+        return pointsWithPlaces;
     }
 
     async getPlacesAtLatLng(latitude: number, longitude: number) : Promise<NbnPlace[]> {
