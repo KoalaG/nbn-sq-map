@@ -1,6 +1,8 @@
 import IDatastore from "../interfaces/datastore.interface";
 import IMarkerLayer from "../interfaces/markerlayer.interface";
 import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import * as L from "leaflet";
 import { NbnPlace, PointAndLocids, PointAndPlaces } from "../types";
@@ -139,9 +141,23 @@ export default class MarkerLayerCluster implements IMarkerLayer {
 
     markerClusterRadius(zoom: number) {
         switch(zoom) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4: return 120;
+            case 5: return 100;
+            case 6: return 80;
+            case 7: return 60;
+            case 8: return 40;
+            case 9: return 30;
+            case 10: return 25;
+            case 11: return 25;
+            case 12: return 25;
             case 13: return 24;
             case 14: return 23;
             case 15: return 20;
+            case 16: return 15;
             default: return 0;
         }
     }
@@ -170,23 +186,48 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         }
     } = {};
 
-    async refreshMarkersInsideBounds(bounds: L.LatLngBounds) {
+    async refreshMarkersInsideBounds(bounds: L.LatLngBounds, mFilter?: (place: NbnPlace) => boolean) {
 
         const newPoints = await this.datastore.getFullPointsWithinBounds(bounds);
         
-        newPoints.forEach(point => {
-            const latLngString = point.latlng;
-            if (!this.points[latLngString]) {
-                this.points[latLngString] = {
-                    layer: this.renderPoint(point),
-                    point,
-                };
-            } else {
-                this.points[latLngString].point = point;
-            }
-        });
+        newPoints
+            .forEach(point => {
+                const latLngString = point.latlng;
+                if (!this.points[latLngString]) {
+                    this.points[latLngString] = {
+                        layer: this.renderPoint(point),
+                        point,
+                    };
+                } else {
+                    this.points[latLngString].point = point;
+                }
+            })
 
-        this.markers.addLayers(Object.values(this.points).map(p => p.layer));
+
+        if (mFilter) {
+
+            const removeLayers: L.Layer[] = [];
+
+            const filteredPoints = Object.values(this.points)
+                .filter(({layer, point}) => {
+                    const showPoint = point.places.filter(mFilter).length > 0;
+                    if (!showPoint) {
+                        removeLayers.push(layer);
+                    }
+                    return showPoint;
+                });
+
+            if (removeLayers.length) {
+                this.markers.removeLayers(removeLayers);
+            }
+
+            this.markers.addLayers(filteredPoints.map(p => p.layer));
+
+        }
+            
+        else {
+            this.markers.addLayers(Object.values(this.points).map(p => p.layer));
+        }
     }
 
     async removeMarkersOutsideBounds(bounds: L.LatLngBounds) {

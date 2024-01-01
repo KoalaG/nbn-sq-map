@@ -6,9 +6,11 @@
  * @license MIT
  */
 
-import { IndexDBDatastore } from "./classes/datastore.indexdb.class";
-import LipApi from "./classes/lip_api.class";
-import NbnTechMap from "./classes/nbn_tech_map.class";
+import { IndexDBDatastore } from "./datastore/datastore.indexdb.class";
+import LipApi from "./api/lip_api.class";
+import NbnTechMap from "./nbn_tech_map.class";
+import ControDisplayMode from "./controls/control_display_mode.class";
+import { NbnPlace } from "./types";
 
 /**
  * @function ready
@@ -44,14 +46,43 @@ ready(function() {
     const mapApi = new LipApi();
     const datastore = new IndexDBDatastore();
 
+    let displayMode = 'all';
+
     const nbnTechMap = new NbnTechMap({
         mapContainerId: 'map',
         api: mapApi,
         datastore: datastore,
     });
 
+    // Add MarkerController
+    nbnTechMap.setMarkerFilter((place: NbnPlace) => {
+        switch (displayMode) {
+            case 'all':
+                return true;
+            case 'upgrade':
+                return place.programType != null;
+            case 'ee':
+                return place.ee;
+            default:
+                return true;
+        }
+    });
 
+    // Add controls
 
+    // Display Mode Control
+    const cDisplayMode = new ControDisplayMode();
+    nbnTechMap.addControl('displaymode', cDisplayMode);
 
+    // Legend Control
+
+    // Search Control
+
+    // Progress Control
+
+    // Add event Listeners
+    cDisplayMode.on('change', (e) => {
+        displayMode = e.state;
+    });
 
 })

@@ -1,6 +1,7 @@
 import { latLng } from "leaflet";
 import IApi from "./interfaces/api.interface";
 import IDatastore from "./interfaces/datastore.interface";
+import NbnTechMap from "./nbn_tech_map.class";
 
 export type NbnTechMapOptions = {
     mapContainerId: string;
@@ -65,3 +66,10 @@ export type NbnPlaceApiResponse = {
 
 export type LayerWithPlace<T> = Partial<T>
 & { place?: NbnPlace }
+
+export type ControlEvent = {
+    name: string;
+    //map: NbnTechMap;
+    state: any;
+    data: any;
+}

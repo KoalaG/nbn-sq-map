@@ -1,6 +1,6 @@
 import * as L from 'leaflet';
 
-import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from '../types';
+import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from './types';
 //import MarkerGroup from './marker_group.class.ts.dev';
 //import ControlZoomWarning from './control_zoom_warning.class';
 //import ControlFilter from './control_filter.class';
@@ -10,10 +10,11 @@ import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from
 
 //import * as LocateControl from 'leaflet.locatecontrol';
 //import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'
-import IApi from '../interfaces/api.interface';
-import IDatastore from '../interfaces/datastore.interface';
-import IMarkerLayer from '../interfaces/markerlayer.interface';
-import MarkerLayerCluster from './markerlayer.cluster.class';
+import IApi from './interfaces/api.interface';
+import IDatastore from './interfaces/datastore.interface';
+import IMarkerLayer from './interfaces/markerlayer.interface';
+import MarkerLayerCluster from './classes/markerlayer.cluster.class';
+import IControl from './interfaces/control.interface';
 
 export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const north = Math.ceil(bounds.getNorth() * 50) / 50;
@@ -58,13 +59,18 @@ export default class NbnTechMap {
      */
     private markerLayer: IMarkerLayer;
 
+    /**
+     * @Property {markerFilter} - Function to filter markers
+     */
+    private markerFilter: (place: NbnPlace) => boolean = (place: NbnPlace) => true;
+
     // Stores map controls
-    controls: {[key: string]: any} = {
+    /*controls: {[key: string]: any} = {
         zoomWarning: null,
         legend: null,
         displayMode: null,
         filter: null,
-    }
+    }*/
 
     /**
      * 
@@ -330,7 +336,7 @@ export default class NbnTechMap {
         }
 
         bounds = roundBounds(bounds);
-        this.markerLayer.refreshMarkersInsideBounds(bounds);
+        this.markerLayer.refreshMarkersInsideBounds(bounds, this.markerFilter);
 
         /*
         // Get the boxes
@@ -362,6 +368,27 @@ export default class NbnTechMap {
         }
         */
 
+    }
+
+    private controls: {
+        [key: string]: IControl;
+    } = {};
+
+    addControl(key: string, control: IControl) {
+        if (this.controls[key]) {
+            throw new Error(`Control with key ${key} already exists`);
+        }
+
+        this.controls[key] = control;
+
+        this.map.addControl(control.getControl())
+
+        console.log('Added control', key);
+    }
+
+    setMarkerFilter(filter: (place: NbnPlace) => boolean) {
+        this.markerFilter = filter;
+        this.markerLayer.refreshMarkersInsideBounds(this.map.getBounds(), this.markerFilter);
     }
 
 }
