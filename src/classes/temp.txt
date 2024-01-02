@@ -1,0 +1,308 @@
+
+
+
+    renderPopupContent<T>(layer: LayerWithPlace) {
+        const place = layer.place;
+
+        let popup = '<b>'+place.locid+'</b></br>'
+            + place.address1 + '</br>'
+            + place.address2 + '</br>'
+            + '<br />';
+            
+        popup += '<b>Technology Plan</b></br>';
+
+        /** Technology Plan Final State */
+        if (place.techType == 'FTTP'
+            || !place.altReasonCode
+            || place.altReasonCode == 'NULL_NA'
+        ) {
+            popup += 'Technology: ' + place.techType + '<br />';
+            if (place.techType != 'FTTP') {
+                popup += 'No tech upgrade planned<br />';
+            }
+        } 
+        
+        else if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+            popup += 'Current: ' + place.techType + '<br />';
+            popup += 'Change: ' + place.altReasonCode + '<br />';
+            popup += 'Status: ' + place.techChangeStatus + '<br />';
+            popup += 'Program: ' + place.programType + '<br />';
+            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        }
+        
+        else {
+            popup += 'Current: ' + place.techType + '<br />';
+            popup += 'Change: ' + place.altReasonCode + '<br />';
+            popup += 'Status: ' + place.techChangeStatus + '<br />';
+            popup += 'Program: ' + place.programType + '<br />';
+            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        }
+
+
+        popup += '<br />'; 
+
+        /*if (this.controls.displayMode.displayMode == 'upgrade') {
+            popup += '<b>Debug</b></br>';
+            popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
+        }*/
+        
+        if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
+            popup += '<b>Enterprise Ethernet</b></br>';
+            popup += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
+            popup += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
+            popup += '<br />';
+        }
+
+        return popup;
+
+    }
+
+    renderPoint(place: NbnPlace) {
+        const circleMarkerLayer: LayerWithPlace = L.circleMarker([ place.latitude, place.longitude ], {
+            radius: 5,
+            fillColor: this.getPlaceColour(place),
+            color: "#000000",
+            weight: 1,
+            opacity: 1,
+            fillOpacity: 0.8,
+        });
+
+        circleMarkerLayer.place = place;
+
+        circleMarkerLayer.bindPopup((layer) => this.renderPopupContent(layer));
+
+        return circleMarkerLayer;
+
+    }
+
+    processFetchResult(result: NbnPlaceApiResponse,
+        north: number, east: number, south: number, west: number
+    ) {
+
+        // If more pages, start fetching next page
+        if (result.next) {
+            console.log("Next page: ", result.next, 'of', result.total);
+            this.fetchData(north, east, south, west, result.next);
+        }
+
+        // Process places
+        result.places.forEach(place => {
+            this.datastore.storePlaceMarker(this.renderPoint(place));
+        });
+
+        this.refreshMarkersFromStore();
+        this.controls.filter.refresh();
+
+    }
+
+    includePlaceInTechUpgrade(place: NbnPlace) {
+        
+        // Don't include if no plans for upgrade
+        if (place.techChangeStatus == 'Not Planned') {
+            return false;
+        }
+
+        // Include if target quarter is selected
+        if (this.controls.filter.filters.targetQuarters.length > 0) {
+            if (this.controls.filter.filters.targetQuarters.includes(place.targetEligibilityQuarter)) {
+                return true;
+            }
+            return false;
+        }
+
+        // Include if tech change status is not known
+        if (place.techChangeStatus) {
+            return true;
+        }
+
+        return false;
+
+    }
+
+    refreshMarkersFromStore() {
+
+        /**
+         * Remove markers that are out of bounds
+         */
+        const placeMarkersOutOfBounds = this.datastore.getPlaceMarkersOutOfBounds();
+        this.markerGroup.markerGroup.removeLayers(placeMarkersOutOfBounds);
+
+        /**
+         * Get markers within bounds
+         */
+        const placeMarkersWithinBounds = this.datastore.getPlaceMarkersWithinBounds();
+
+        /**
+         * Function to filter markers we want to keep
+         * @param {*} placeMarker 
+         * @returns 
+         */
+        const markerFilter = (placeMarker: LayerWithPlace) => {
+            
+            // Show all markers if display mode is all
+            if (this.controls.displayMode.displayMode == 'all') return true;
+
+            // Show only ee markers if display mode is ee
+            if (this.controls.displayMode.displayMode == 'ee') {
+                return placeMarker.place.ee;
+            }
+
+            // Show only tech upgrade markers if display mode is upgrade
+            if (this.controls.displayMode.displayMode == 'upgrade') {
+                return this.includePlaceInTechUpgrade(placeMarker.place);
+            }
+
+        };
+
+        // Filter markers
+        const filteredMarkers = placeMarkersWithinBounds.filter(markerFilter);
+
+        // If too many markers, remove marker group and show warning
+        console.log('Showing ' + filteredMarkers.length + ' markers');
+        if (filteredMarkers.length > 25000) {
+            this.markerGroup.remove();
+            this.controls.zoomWarning.show();
+        } else {
+            this.markerGroup.show();
+        }
+
+        // Add filtered markers to map
+        this.markerGroup.markerGroup.addLayers(filteredMarkers);
+
+        // Remove unfiltered markers from map
+        const unFilteredMarkers = placeMarkersWithinBounds.filter((marker: any) => !markerFilter(marker));
+        this.markerGroup.markerGroup.removeLayers(unFilteredMarkers);
+
+        // Refresh marker colours
+        this.markerGroup.markerGroup.getLayers().forEach((marker: LayerWithPlace<T>) => {
+            marker.setStyle({
+                fillColor: this.getPlaceColour(marker.place),
+            });
+        });
+
+    }
+
+    fetchData(north, east, south, west, page = 1) {
+
+        if (page > 5) {
+            console.log('Stopping fetch. Too many pages.');
+            this.controls.zoomWarning.show();
+            return;
+        }
+
+        this.lipApi
+            .fetchPage(north, east, south, west, page)
+            .then(data => this.processFetchResult(data, north, east, south, west))
+            .catch(error => console.error(error))
+    }
+
+    mapChanged(event) {
+
+        // Save location on move
+        localStorage.setItem('startpos', JSON.stringify({
+            lat: this.map.getCenter().lat,
+            lng: this.map.getCenter().lng,
+            zoom: this.map.getZoom(),
+        }));
+
+        // Only fetch data if zoomed in enough
+        if(this.map.getZoom() < MIN_ZOOM_FOR_DATA_FETCH) {
+            this.markerGroup.remove();
+            this.controls.zoomWarning.show();
+            return;
+        }
+
+        this.markerGroup.show();
+        this.controls.zoomWarning.remove();
+
+        this.refreshMarkersFromStore();
+                        
+        const north = this.map.getBounds().getNorth();
+        const east = this.map.getBounds().getEast();
+        const south = this.map.getBounds().getSouth();
+        const west = this.map.getBounds().getWest();
+        
+        console.log('Map changed', north, east, south, west);
+        this.fetchData(north, east, south, west);
+    
+    }
+
+    getPlaceColour(place) {
+
+        /** EE Display Mode */
+        if (this.controls.displayMode.displayMode == 'ee') {
+
+            if(place.cbdpricing && place.zeroBuildCost) {
+                return colourEE_CBD_ZBC;
+            }
+
+            if(place.cbdpricing && !place.zeroBuildCost) {
+                return colourEE_CBD_BC;
+            }
+
+            if(!place.cbdpricing && place.zeroBuildCost) {
+                return colourEE_Z123_ZBC;
+            }
+
+            if(!place.cbdpricing && !place.zeroBuildCost) {
+                return colourEE_Z123_BC;
+            }
+
+            return colourUnknown;
+
+        }
+
+        if (this.controls.displayMode.displayMode == 'upgrade') {
+            
+            switch (place.techChangeStatus) {
+                case 'Previous Tech Disconnected': return COL_TECH_COMPLETE;
+                case 'New Tech Connected' : return COL_TECH_COMPLETE;
+                case 'In Design': return COL_TECH_DESIGN;
+                case 'Build Finalised': return COL_TECH_BUILDFINALISED;
+                case 'Committed': return COL_TECH_COMMITTED;
+                case 'Eligible To Order': return COL_TECH_AVAIL;
+                case 'MDU Complex Eligible To Apply': return COL_TECH_MDU_ELIGIBLE;
+                case 'MDU Complex Premises In Build': return COL_TECH_MDU_INBUILD;
+            }
+
+            return colourUnknown;
+        }
+
+        if (isPlaceFTTP(place)) {
+            return colourFTTP;
+        }
+
+        if (isPlaceFTTPAvail(place)) {
+            return colourFTTPAvail;
+        }
+
+        if (isPlaceFTTPSoon(place)) {
+            return colourFTTPSoon;
+        }
+
+        if (isPlaceFTTPFar(place)) {
+            return getTechColour(place.techType);
+        }
+
+        if (isPlaceFTTC(place)) {
+            return colourFTTC;
+        }
+
+        if (isFWtoFTTC(place)) {
+            return colourFTTCAvail;
+        }
+
+        if (isFwtoFTTN(place)) {
+            return colourFTTNB;
+        }
+        
+        if (isSatToFW(place)) {
+            return colourFWAvail;
+        }
+
+        if (place.altReasonCode && place.altReasonCode != 'NULL_NA') {
+            console.log(place);
+        }
+
+        return getTechColour(place.techType);
+    }

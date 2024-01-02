@@ -1,0 +1,54 @@
+import * as L from "leaflet";
+import NbnTechMap from "./nbn_tech_map.class";
+
+export default class MarkerGroup {
+
+    nbnTechMap: NbnTechMap;
+    
+    markerGroup: L.MarkerClusterGroup;
+    
+    constructor (nbnTechMap: NbnTechMap) {
+        this.nbnTechMap = nbnTechMap;
+        
+        this.markerGroup = L.markerClusterGroup({
+            showCoverageOnHover: false,
+            zoomToBoundOnClick: false,
+            singleMarkerMode: true,
+            maxClusterRadius: 0,
+            /*maxClusterRadius: (zoom) => {
+                if (zoom >= 15) return 0;
+                return 20;
+            },*/
+            removeOutsideVisibleBounds: true,
+            iconCreateFunction: this.clusterIconCreate,
+        });
+
+    }
+
+    show() {
+        this.nbnTechMap.map.addLayer(this.markerGroup);
+    }
+
+    remove() {
+        this.nbnTechMap.map.removeLayer(this.markerGroup);
+    }
+
+    clusterIconCreate(cluster) {
+
+        const placeMarkers = cluster.getAllChildMarkers();
+
+        const colours = placeMarkers.map(marker => marker.options.fillColor);
+
+        let colour = colourUnknown;
+
+        if (colours.every(c => c == colours[0])) {
+            colour = colours[0];
+        }
+
+        return L.divIcon({
+            html: '<div style="background-color: '+ colour +'">' + cluster.getChildCount() + '</div>',
+            className: 'marker-cluster'
+        });
+    }
+
+}

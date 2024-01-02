@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>NBN Technology Map</title>
+
+    <!--script defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBbHBg39oMEx6sWXD3Qt_cgR_7WrtsSBmE&libraries=places"></script-->
+    <!--script defer src="https://cdn.jsdelivr.net/npm/leaflet-google-places-autocomplete/src/js/leaflet-gplaces-autocomplete.min.js"></script-->
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" integrity="sha512-h9FcoyWjHcOcmEVkxOfTLnmZFWIH0iZhZT1H2TbOq55xssQGEJHEaIm+PgoUaZbRvQTNTluNOEfb1ZRy6D3BOw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" integrity="sha512-nMNlpuaDPrqlEls3IX/Q56H36qvBASwb3ipuo3MxeWbsQB1881ox0cRv7UPTgBlriqoynt35KjEwgGUeUXIPnw==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css" integrity="sha512-ENrTWqddXrLJsQS2A86QmvA17PkJ0GVm1bqj5aTgpeMAfDKN2+SIOLpKG8R/6KkimnhTb+VW5qqUHB/r1zaRgg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.locatecontrol@0.79.0/dist/L.Control.Locate.min.css" integrity="sha256-b1FUshftUDgzY/VtFMamPDs0o3GER52S9Tk8IK+wOoE=" crossorigin="anonymous" referrerpolicy="no-referrer" />
+
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="NBN Upgrade Map">
+    <meta name="author" content="KoalaG">
+    <!--[if !IE]>
+        <meta name="theme-color" content="#ffffff">
+    <![endif]-->
+
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+        html, body, #map {
+            height: 100%;
+            width: 100vw;
+        }
+        .marker-cluster div {
+            min-width: 30px;
+            min-height: 30px;
+            aspect-ratio:1;
+            position:relative;
+            display:inline-grid;
+            margin:5px;
+            place-content:center;
+            font-size:12px;
+            font-family:sans-serif;
+        }
+        .marker-cluster div span {
+            margin: 0 10px;
+        }
+
+        .marker-cluster div:before,
+        .marker-cluster div:after {
+            content:"";
+            position:absolute;
+            border-radius:50%;
+        }
+        .marker-cluster div:before {
+            inset:0;
+            background:
+                conic-gradient(
+                darkred 0%,
+                darkred 25%,
+                black 25%,
+                black 100%
+                );
+            -webkit-mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
+                    mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
+        }
+
+        .leaflet-popup-content {
+            width: fit-content !important;
+            min-width: 200px;
+            max-width: 80vw;
+            max-height: 80vh;
+            overflow: scroll;
+        }
+
+        .leaflet-popup-content .accordion {
+            background-color: #eee;
+            color: #444;
+            cursor: pointer;
+            padding: 5px;
+            width: 100%;
+            text-align: left;
+            border: none;
+            outline: none;
+            transition: 0.4s;
+        }
+
+        /* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+        .leaflet-popup-content .active .accordion, .leaflet-popup-content .accordion:hover {
+            background-color: #ccc;
+        }
+
+        .leaflet-popup-content .active .panel {
+            display: block !important;
+        }
+
+        /* Style the accordion panel. Note: hidden by default */
+        .leaflet-popup-content .panel {
+            padding: 0 5px;
+            background-color: white;
+            display: none;
+            overflow: hidden;
+        }
+    </style>
+
+</head>
+<body>
+    <div id="map"></div>
+</body>
+</html>

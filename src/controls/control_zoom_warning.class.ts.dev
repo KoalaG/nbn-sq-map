@@ -1,0 +1,40 @@
+import * as L from 'leaflet';
+
+export default class ControlZoomWarning {
+
+    nbnTechMap = null;
+    control = null;
+    controlDiv = null;
+    
+    constructor (nbnTechMap) {
+        this.nbnTechMap = nbnTechMap;
+        this.control = L.control({ position: 'topright' });
+        this.control.onAdd = this.addControlDiv;
+    }
+
+    addControlDiv(map) {
+
+        if (!this.controlDiv) {
+            this.controlDiv = L.DomUtil.create('div', 'info legend');
+        }
+
+        this.controlDiv.style.backgroundColor = "#ff0000";
+        this.controlDiv.style.opacity = "0.8";
+        this.controlDiv.style.padding = "5px";
+        this.controlDiv.style.borderRadius = "5px";
+        
+        var legendHTML = '<b style="color:white">Zoom in to see details. Current Zoom: ' + map?.getZoom() || undefined + '</b>';
+        this.controlDiv.innerHTML = legendHTML;
+
+        return this.controlDiv;
+    }
+
+    show() {
+        this.control.addTo(this.nbnTechMap.map);
+    }
+
+    remove() {
+        this.control.remove();
+    }
+
+}
