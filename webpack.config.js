@@ -15,8 +15,9 @@ const workboxPlugin = new WorkboxPlugin.GenerateSW({
     cacheId: CACHE_ID,
     cleanupOutdatedCaches: true,
 
-    inlineWorkboxRuntime: true,
+    inlineWorkboxRuntime: false,
     
+
     // Define runtime caching rules.
     runtimeCaching: [
 

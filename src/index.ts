@@ -16,6 +16,18 @@ import MarkerLayerCluster from "./classes/markerlayer.cluster.class";
 import AllMode from "./modes/mode.all";
 import ControlLegend from "./controls/control_legend.class";
 
+import 'leaflet/dist/leaflet.css';
+
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./service-worker.js').then(registration => {
+            console.log('SW registered: ', registration);
+        }).catch(registrationError => {
+            console.log('SW registration failed: ', registrationError);
+        });
+    });
+}
+
 /**
  * @function ready
  * @description Executes a function when the DOM is ready.
