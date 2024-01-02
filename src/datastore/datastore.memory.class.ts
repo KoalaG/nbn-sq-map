@@ -28,7 +28,9 @@ export class MemoryDatastore implements IDatastore {
             this.latLngIndex[latLng] = [ locid ];
         }
         else {
-            this.latLngIndex[latLng].push(locid);
+            if (!this.latLngIndex[latLng].includes(locid)) {
+                this.latLngIndex[latLng].push(locid);
+            }
         }
 
         // Store place

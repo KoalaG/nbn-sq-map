@@ -45,23 +45,68 @@
 
         .marker-cluster div:before,
         .marker-cluster div:after {
-        content:"";
-        position:absolute;
-        border-radius:50%;
+            content:"";
+            position:absolute;
+            border-radius:50%;
         }
         .marker-cluster div:before {
-        inset:0;
-        background:
-            conic-gradient(
-            darkred 0%,
-            darkred 25%,
-            black 25%,
-            black 100%
-            );
-        -webkit-mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
-                mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
+            inset:0;
+            background:
+                conic-gradient(
+                darkred 0%,
+                darkred 25%,
+                black 25%,
+                black 100%
+                );
+            -webkit-mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
+                    mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
         }
 
+        .leaflet-popup-content {
+            min-width: 200px;
+            max-height: 80vh;
+            overflow: scroll;
+        }
+
+        .leaflet-popup-content .accordion {
+            background-color: #eee;
+            color: #444;
+            cursor: pointer;
+            padding: 5px;
+            width: 100%;
+            text-align: left;
+            border: none;
+            outline: none;
+            transition: 0.4s;
+        }
+
+        /* Add a background color to the button if it is clicked on (add the .active class with JS), and when you move the mouse over it (hover) */
+        .leaflet-popup-content .active .accordion, .leaflet-popup-content .accordion:hover {
+            background-color: #ccc;
+        }
+
+        .leaflet-popup-content .active .panel {
+            display: block !important;
+        }
+
+        .leaflet-popup-content .accordion:before {
+            content: '\02795'; /* Unicode character for "plus" sign (+) */
+            font-size: 13px;
+            color: #777;
+            margin-right: 5px;
+        }
+
+        .leaflet-popup-content .active .accordion:before {
+            content: "\2796"; /* Unicode character for "minus" sign (-) */
+        }
+
+        /* Style the accordion panel. Note: hidden by default */
+        .leaflet-popup-content .panel {
+            padding: 0 5px;
+            background-color: white;
+            display: none;
+            overflow: hidden;
+        }
     </style>
 
 </head>

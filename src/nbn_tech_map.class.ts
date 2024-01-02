@@ -16,6 +16,7 @@ import IMarkerLayer from './interfaces/markerlayer.interface';
 import MarkerLayerCluster from './classes/markerlayer.cluster.class';
 import IControl from './interfaces/control.interface';
 import { isDebugMode } from './utils';
+import IMode from './interfaces/mode.interface';
 
 export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const north = Math.ceil(bounds.getNorth() * 50) / 50;
@@ -24,6 +25,8 @@ export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const east = Math.ceil(bounds.getEast() * 25) / 25;
     return L.latLngBounds([south, west], [north, east]);
 }
+
+const MAX_BOXES_IN_VIEW = 1000;
 
 export default class NbnTechMap {
 
@@ -65,6 +68,8 @@ export default class NbnTechMap {
      */
     private markerFilter: (place: NbnPlace) => boolean = (place: NbnPlace) => true;
 
+    private modeHandler: IMode;
+
     // Stores map controls
     /*controls: {[key: string]: any} = {
         zoomWarning: null,
@@ -83,9 +88,15 @@ export default class NbnTechMap {
 
         this.api = options.api;
         this.datastore = options.datastore;
+        this.modeHandler = options.defaultModeHandler;
 
         // Create the map
         this.map = L.map(options.mapContainerId, { preferCanvas: true });
+
+        // Set up the marker layer
+        this.markerLayer = new MarkerLayerCluster(
+            this.map, this.datastore, this.modeHandler
+        )
 
         // Set up the OSM layer
         this.mapTileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
@@ -97,11 +108,6 @@ export default class NbnTechMap {
 
         // Add the layer to the map
         this.mapTileLayer.addTo(this.map);
-
-        // Create and add marker layer
-        this.markerLayer = new MarkerLayerCluster();
-        this.markerLayer.setMap(this.map);
-        this.markerLayer.setDatastore(this.datastore);
 
         // Set default view (Centred over Australia)
         // Get the last map position from local storage
@@ -181,6 +187,10 @@ export default class NbnTechMap {
      * Hide markers that are outside the map bounds
      */
     hideMarkersOutsideCurrentView() {
+        if (!this.markerLayer) {
+            throw new Error('Marker Layer not set');
+        }
+
         // Hide markers that are outside the map bounds
         const mapBounds = this.map.getBounds().pad(0.5);
         this.markerLayer.removeMarkersOutsideBounds(mapBounds);
@@ -227,7 +237,7 @@ export default class NbnTechMap {
         }
 
         // Don't fetch boxes if more than 80
-        if (boxes.length > 80) {
+        if (boxes.length > MAX_BOXES_IN_VIEW) {
             console.warn('Too many boxes to fetch. Skipping.');
             return;
         }
@@ -305,6 +315,10 @@ export default class NbnTechMap {
 
     async refreshPointsFromStore(bounds?: L.LatLngBounds) {
 
+        if (!this.markerLayer) {
+            throw new Error('Marker Layer not set');
+        }
+
         // If bounds are not passed, use map bounds
         if (!bounds) {
             console.log('Bounds not passed. Using map bounds.');
@@ -363,8 +377,33 @@ export default class NbnTechMap {
     }
 
     setMarkerFilter(filter: (place: NbnPlace) => boolean) {
+
+        if (!this.markerLayer) {
+            throw new Error('Marker Layer not set');
+        }
+
         this.markerFilter = filter;
         this.markerLayer.refreshMarkersInsideBounds(this.map.getBounds(), this.markerFilter);
+    }
+
+    /*private setMarkerLayer(markerLayer: IMarkerLayer) {
+
+        if (this.markerLayer) {
+            this.markerLayer.removeAllMarkers();
+        }
+
+        this.markerLayer = markerLayer;
+        this.markerLayer.setMap(this.map);
+        this.markerLayer.setDatastore(this.datastore);
+
+        this.markerLayer.refreshMarkersInsideBounds(
+            this.map.getBounds(), this.markerFilter
+        );
+    }*/
+
+    setModeHandler(modeHandler: IMode) {
+        this.modeHandler = modeHandler;
+        this.markerLayer?.setModeHandler(modeHandler);
     }
 
 }

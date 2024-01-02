@@ -35,101 +35,34 @@ const COL_TECH_MDU_ELIGIBLE     = '#6B02E3';
 
 const colourUnknown      = '#888888';
 
-function isPlaceFTTP(place: NbnPlace) {
-    return place.techType == 'FTTP';
-}
-
-function isPlaceFTTPAvail(place: NbnPlace) {
-    if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
-        switch(place.techChangeStatus) {
-            case 'Eligible To Order':
-                return true;
-        }
-    }
-    return false;
-}
-
-function isPlaceFTTPSoon(place: NbnPlace) {
-    if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
-        switch(place.techChangeStatus) {
-            case 'In Design':
-            case 'Build Finalised':
-            case 'Planned':
-            case 'MDU Complex Eligible To Apply':
-            case 'MDU Complex Premises In Build':
-                return true;
-        }
-    }
-    return false;
-}
-
-function isPlaceFTTPFar(place: NbnPlace) {
-    if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
-        switch(place.techChangeStatus) {
-            case 'Committed':
-                return true;
-        }
-    }
-}
-
-function isPlaceFTTC(place: NbnPlace) {
-    if(place.techType == "FTTC"
-        && place.reasonCode && place.reasonCode.match(/^FTTC/)
-        && place.techChangeStatus == 'New Tech Connected'
-    ) {
-        return true;
-    }
-    return false;
-}
-
-function isFWtoFTTC(place: NbnPlace) {
-    return place.techType == "FTTC"
-        && place.reasonCode && place.reasonCode.match(/^FTTC/)
-        && place.techChangeStatus == 'Eligible To Order'
-    ;
-}
-
-function isFwtoFTTN(place: NbnPlace) {
-    return place.techType == "FTTN"
-        && place.reasonCode == "FTTN_SA"
-        && place.altReasonCode == "FW_CT"
-        && place.techChangeStatus == 'Eligible To Order'
-    ;
-}
-
-function isSatToFW(place: NbnPlace) {
-    return place.techType == "WIRELESS"
-        && place.reasonCode == "FW_SA"
-        && place.techChangeStatus == 'Eligible To Order'
-    ;
-}
-
-function getTechColour(techType: string) {
-    switch(techType) {
-        case 'FTTP': return colourFTTP;
-        case 'FTTC': return colourFTTC;
-        case 'FTTN':
-        case 'FTTB': return colourFTTNB;
-        case 'HFC': return colourHFC;
-        case 'WIRELESS': return colourFW;
-        case 'SATELLITE': return colourSat;
-    }
-    return colourUnknown;
-}
+import IMode from "../interfaces/mode.interface";
 
 export default class MarkerLayerCluster implements IMarkerLayer {
 
-    private map?: L.Map;
-    private datastore?: IDatastore;
+    private map: L.Map;
+    private datastore: IDatastore;
+    private modeHandler: IMode;
 
     private markers: L.MarkerClusterGroup;
 
-    constructor() {
+    private points: {
+        [latLngString: string]: {
+            layer: L.CircleMarker,
+            point: PointAndPlaces,
+        }
+    } = {};
+
+    constructor(map: L.Map, datastore: IDatastore, modeHandler: IMode) {
+
+        this.map = map;
+        this.datastore = datastore;
+        this.modeHandler = modeHandler;
+
         this.markers = new L.MarkerClusterGroup({
             maxClusterRadius: this.markerClusterRadius,
             spiderfyOnMaxZoom: false,
             disableClusteringAtZoom: 18,
-            showCoverageOnHover: false,
+            showCoverageOnHover: true,
             zoomToBoundsOnClick: true,
             removeOutsideVisibleBounds: true,
             iconCreateFunction: this.iconCreateFunction,
@@ -140,7 +73,15 @@ export default class MarkerLayerCluster implements IMarkerLayer {
                 console.log('chunkProgress', { processed, total, elapsed });
             },
         });
+
+        this.markers.addTo(this.map);
+
+        this.map.on('zoomend', (event) => {
+            console.log('zoomend', event.target.getZoom());
+        });
+
     }
+
 
     private iconCreateFunction(cluster: L.MarkerCluster) : L.DivIcon
     {
@@ -190,15 +131,15 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             case 1:
             case 2:
             case 3:
-            case 4: return 120;
-            case 5: return 100;
-            case 6: return 80;
-            case 7: return 60;
-            case 8: return 40;
-            case 9: return 30;
-            case 10: return 25;
-            case 11: return 25;
-            case 12: return 25;
+            case 4:
+            case 5:
+            case 6:
+            case 7:
+            case 8:
+            case 9:
+            case 10:
+            case 11:
+            case 12:
             case 13: return 150;
             case 14: return 100;
             case 15:
@@ -207,34 +148,31 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         }
     }
 
-    setMap(map: L.Map) {
-        if (this.map) {
-            this.map.removeLayer(this.markers);
-        }
-        this.map = map;
-        this.markers.addTo(this.map);
-        this.map.on('zoomend', (event) => {
-            console.log('zoomend', event.target.getZoom());
+    setModeHandler(modeHandler: IMode) {
+
+        this.modeHandler = modeHandler;
+
+        // Update the colour of the points
+        Object.values(this.points).forEach(({layer, point}) => {
+            layer.setStyle({
+                fillColor: modeHandler.pointColour(point),
+            });
+            layer.redraw();
         });
-        return this;
-    }
-    setDatastore(datastore: IDatastore): ThisType<this> {
-        this.datastore = datastore;
-        return this;
-    }
 
+        console.error(this.markers);
 
-    private points: {
-        [latLngString: string]: {
-            layer: L.Layer,
-            point: PointAndPlaces,
+        if (this.markers && this.markers.getLayers().length) {
+            this.markers.refreshClusters();
         }
-    } = {};
+
+        return this;
+    }
 
     async refreshMarkersInsideBounds(bounds: L.LatLngBounds, mFilter?: (place: NbnPlace) => boolean) {
 
         if (!this.datastore) {
-            return;
+            throw new Error('Datastore not set');
         }
 
         const newPoints = await this.datastore.getFullPointsWithinBounds(bounds);
@@ -267,15 +205,15 @@ export default class MarkerLayerCluster implements IMarkerLayer {
                 });
 
             if (removeLayers.length) {
-                this.markers.removeLayers(removeLayers);
+                this.markers?.removeLayers(removeLayers);
             }
 
-            this.markers.addLayers(filteredPoints.map(p => p.layer));
+            this.markers?.addLayers(filteredPoints.map(p => p.layer));
 
         }
             
         else {
-            this.markers.addLayers(Object.values(this.points).map(p => p.layer));
+            this.markers?.addLayers(Object.values(this.points).map(p => p.layer));
         }
     }
 
@@ -288,95 +226,103 @@ export default class MarkerLayerCluster implements IMarkerLayer {
     }
 
     async removeAllMarkers(): Promise<void> {
-        this.markers.clearLayers();
+        this.markers?.clearLayers();
     }
 
-    renderPoint(point: PointAndPlaces): L.Layer {
+    /**
+     * Renders a point using the current mode handler.
+     * @param point
+     * @returns 
+     */
+    renderPoint(point: PointAndPlaces): L.CircleMarker {
 
         const circleMarkerLayer = L.circleMarker([ point.latitude, point.longitude ], {
             radius: 5,
-            fillColor: this.getPlaceColour(point.places[0]), //this.getPlaceColour(place),
+            fillColor: this.modeHandler?.pointColour(point), //this.getPlaceColour(place),
             color: "#000000",
             weight: 1,
             opacity: 1,
             fillOpacity: 0.8,
         });
 
-        circleMarkerLayer.bindPopup(() => this.renderPopupContent(point), {
-            autoPan: true,
-            autoClose: false,
-        });
+        circleMarkerLayer.bindPopup(
+            (layer) => this.renderPopup(point.places) || '',
+            {
+                autoPan: true,
+                autoClose: false,
+            }
+        );
 
-        circleMarkerLayer.bindTooltip((layer) => {
-            return this.points[point.latlng].point.places.map((place) => place.address1).join(', ')
-        }, {
-            
-        });
+        circleMarkerLayer.bindTooltip(
+            (layer) => this.modeHandler.renderTooltip(point.places) || '',
+            {}
+        );
         
         return circleMarkerLayer;
 
     }
 
-    
+    renderPopup(places: NbnPlace[]) : HTMLElement {
 
-    renderPopupContent(point: PointAndPlaces) {
-
-        const places = point.places;
-        const place = places[0];
-
-        let popup = '<b>'+place.locid+'</b></br>'
-            + place.address1 + '</br>'
-            + place.address2 + '</br>'
-            + '<br />';
-            
-        popup += '<b>Technology Plan</b></br>';
-
-        /** Technology Plan Final State */
-        if (place.techType == 'FTTP'
-            || !place.altReasonCode
-            || place.altReasonCode == 'NULL_NA'
-        ) {
-            popup += 'Technology: ' + place.techType + '<br />';
-            if (place.techType != 'FTTP') {
-                popup += 'No tech upgrade planned<br />';
-            }
-        } 
-        
-        else if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
-            popup += 'Current: ' + place.techType + '<br />';
-            popup += 'Change: ' + place.altReasonCode + '<br />';
-            popup += 'Status: ' + place.techChangeStatus + '<br />';
-            popup += 'Program: ' + place.programType + '<br />';
-            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
-        }
-        
-        else {
-            popup += 'Current: ' + place.techType + '<br />';
-            popup += 'Change: ' + place.altReasonCode + '<br />';
-            popup += 'Status: ' + place.techChangeStatus + '<br />';
-            popup += 'Program: ' + place.programType + '<br />';
-            popup += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
+        if (places.length == 1) {
+            return this.modeHandler.renderPopupContent(places[0]);
         }
 
-
-        popup += '<br />'; 
-
-        /*if (this.controls.displayMode.displayMode == 'upgrade') {
-            popup += '<b>Debug</b></br>';
-            popup += '<pre>' + JSON.stringify(place, null, 2) + '</pre>';
-        }*/
-        
-        /*if (place.ee && this.controls.displayMode.displayMode == 'ee' || this.controls.displayMode.displayMode == 'all') {
-            popup += '<b>Enterprise Ethernet</b></br>';
-            popup += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
-            popup += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
-            popup += '<br />';
-        }*/
-
-        return popup;
+        return this.rendorPopupMulti(places);
 
     }
+    
+    rendorPopupMulti(places: NbnPlace[]) : HTMLElement {
+        const groupDiv = document.createElement('div');
 
+        const placeContainers: HTMLElement[] = [];
+
+        for (let place of places) {
+
+            const placeContainer = document.createElement('div');
+
+            // Create Accordion Button
+            const button = document.createElement('button');
+            button.classList.add('accordion');
+            button.type = 'button';
+            button.textContent = place.address1;
+
+            const title = document.createElement('div');
+
+            
+            // Add Panel
+            const panel = document.createElement('div');
+            panel.classList.add('panel');
+            panel.appendChild(this.modeHandler.renderPopupContent(place));
+            
+            // Add Events
+            button.addEventListener('click', () => {
+
+                const currentlyActive = placeContainer.classList.contains('active');
+                
+                // Remove active class from all buttons and panels
+                placeContainers.forEach((placeContainer) => {
+                    placeContainer.classList.remove('active');
+                });
+
+                if (!currentlyActive) {
+                    placeContainer.classList.add('active');
+                }
+
+            });
+
+            // Add to DOM
+            placeContainer.appendChild(button);
+            placeContainer.appendChild(panel);
+            groupDiv.appendChild(placeContainer);
+            placeContainers.push(placeContainer);
+
+        }
+
+        return groupDiv;
+    }
+
+    /*
     getPlaceColour(place: NbnPlace) {
 
         /** EE Display Mode */
@@ -418,7 +364,7 @@ export default class MarkerLayerCluster implements IMarkerLayer {
 
             return colourUnknown;
         }*/
-
+/*
         if (isPlaceFTTP(place)) {
             return colourFTTP;
         }
@@ -454,8 +400,8 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         if (place.altReasonCode && place.altReasonCode != 'NULL_NA') {
             console.log(place);
         }
-
         return getTechColour(place.techType);
     }
+*/
 
 }

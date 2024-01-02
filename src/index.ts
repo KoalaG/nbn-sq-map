@@ -12,6 +12,8 @@ import NbnTechMap from "./nbn_tech_map.class";
 import ControDisplayMode from "./controls/control_display_mode.class";
 import { NbnPlace } from "./types";
 import { MemoryDatastore } from "./datastore/datastore.memory.class";
+import MarkerLayerCluster from "./classes/markerlayer.cluster.class";
+import AllMode from "./modes/mode.all";
 
 /**
  * @function ready
@@ -30,30 +32,15 @@ function ready(fn: () => void) {
     }
 }
 
-
-if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.dev.js').then(registration => {
-            console.log('DEV SW registered: ', registration);
-        }).catch(registrationError => {
-            console.log('DEV SW registration failed: ', registrationError);
-        });
-        
-        navigator.serviceWorker.register('/service-worker.js').then(registration => {
-            console.log('SW registered: ', registration);
-        }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
-        });
-
-    });
-}
-
 // Execute when DOM is ready.
 ready(function() {
 
     const mapApi = new LipApi();
     //const datastore = new IndexDBDatastore();
     const datastore = new MemoryDatastore();
+    //const markerLayer = new MarkerLayerCluster();
+
+    const modeAll = new AllMode();
 
     let displayMode = 'all';
 
@@ -61,9 +48,14 @@ ready(function() {
         mapContainerId: 'map',
         api: mapApi,
         datastore: datastore,
+        //markerLayer: markerLayer,
+        defaultModeHandler: modeAll
     });
 
+
+
     // Add MarkerController
+    /*
     nbnTechMap.setMarkerFilter((place: NbnPlace) => {
         switch (displayMode) {
             case 'all':
@@ -75,7 +67,7 @@ ready(function() {
             default:
                 return true;
         }
-    });
+    });*/
 
     // Add controls
 
@@ -91,7 +83,17 @@ ready(function() {
 
     // Add event Listeners
     cDisplayMode.on('change', (e) => {
-        displayMode = e.state;
+        switch (e.state) {
+            case 'all':
+                nbnTechMap.setModeHandler(modeAll);
+                break;
+            case 'upgrade':
+                break;
+            case 'ee':
+                break;
+            default:
+                break;
+        }
     });
 
 })
