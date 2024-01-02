@@ -5,14 +5,14 @@ import AControl from "./control.abstract";
 export default class ControDisplayMode extends AControl {
 
     private displayMode = 'all';
-    private elControlDiv: HTMLDivElement;
-    private elDropdown: HTMLSelectElement;
+    private elControlDiv: HTMLDivElement = document.createElement('div');;
+    private elDropdown: HTMLSelectElement = document.createElement('select');;
 
     constructor (/*key: string/*, nbnTechMap: NbnTechMap*/) {
         super(/*key, nbnTechMap*/);
 
         this.generateControlDiv();
-        this.control.onAdd = () => {
+        this.control.onAdd = (map: L.Map) => {
             this.generateDropdown();
             return this.elControlDiv;
         }
@@ -46,14 +46,12 @@ export default class ControDisplayMode extends AControl {
             console.warn('ControlDiv already exists');
         }
 
-        const controlDiv = document.createElement('div');
-        controlDiv.classList.add('info', 'legend');
-        controlDiv.style.backgroundColor = "#ffffff";
-        controlDiv.style.opacity = "0.8";
-        controlDiv.style.padding = "5px";
-        controlDiv.style.borderRadius = "5px";
+        this.elControlDiv.classList.add('info', 'legend');
+        this.elControlDiv.style.backgroundColor = "#ffffff";
+        this.elControlDiv.style.opacity = "0.8";
+        this.elControlDiv.style.padding = "5px";
+        this.elControlDiv.style.borderRadius = "5px";
 
-        this.elControlDiv = controlDiv;
     }
 
     private generateDropdown() : void {
@@ -61,7 +59,7 @@ export default class ControDisplayMode extends AControl {
             console.warn('Dropdown already exists');
         }
 
-        const dropdown = document.createElement('select');
+        const dropdown = this.elDropdown;
         dropdown.classList.add('control-select');
 
         const allOption = document.createElement('option');

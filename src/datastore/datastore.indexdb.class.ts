@@ -25,7 +25,7 @@ export interface NBNTechMapDB extends DBSchema {
 
 export class IndexDBDatastore implements IDatastore {
 
-    private db: IDBPDatabase<NBNTechMapDB>;
+    private db?: IDBPDatabase<NBNTechMapDB>;
 
     // Setup database
     constructor() {
@@ -84,6 +84,10 @@ export class IndexDBDatastore implements IDatastore {
     async storePlace(place: NbnPlace): Promise<void> {
 
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
+
         const tx = db.transaction(['nbnPlaceStore', 'pointsStore'], 'readwrite', {
             'durability': 'relaxed',
         });
@@ -115,6 +119,9 @@ export class IndexDBDatastore implements IDatastore {
     async storePlaces(places: NbnPlace[]) : Promise<void> {
 
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
         const tx = db.transaction(['nbnPlaceStore', 'pointsStore'], 'readwrite', {
             'durability': 'relaxed',
         });
@@ -154,24 +161,36 @@ export class IndexDBDatastore implements IDatastore {
 
     }
 
-    async getPlace(locid: string) : Promise<NbnPlace> {
+    async getPlace(locid: string) : Promise<NbnPlace | undefined> {
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
         return await db.get('nbnPlaceStore', locid);
     }
 
     async getPlaces(): Promise<NbnPlace[]> {
-        const db = await this.db;;
+        const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
         return await db.getAll('nbnPlaceStore');
     }
 
     async getPoints() : Promise<PointAndLocids[]> {
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
         return await db.getAll('pointsStore');
     }
 
     async getPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndLocids[]> {
         
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
         const tx = db.transaction('pointsStore', 'readonly');
     
         const latitudeRange = IDBKeyRange.bound(bounds.getSouth(), bounds.getNorth());
@@ -188,6 +207,9 @@ export class IndexDBDatastore implements IDatastore {
     async getFullPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndPlaces[]> {
         
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
         const tx = db.transaction(['pointsStore', 'nbnPlaceStore'], 'readonly');
 
         const pointStore = tx.objectStore('pointsStore');
@@ -196,16 +218,16 @@ export class IndexDBDatastore implements IDatastore {
         const latitudeRange = IDBKeyRange.bound(bounds.getSouth(), bounds.getNorth());
         const longitudeRange = IDBKeyRange.bound(bounds.getWest(), bounds.getEast());
     
-        const pointsByLatitude = await pointStore.index('latitude').getAll(latitudeRange) as ({ latlng: string } & PointAndLocids)[];
-        const keysByLongitude = await pointStore.index('longitude').getAllKeys(longitudeRange) as string[];
+        const pointsByLatitude = pointStore.index('latitude').getAll(latitudeRange) as Promise<({ latlng: string } & PointAndLocids)[]>;
+        const keysByLongitude = pointStore.index('longitude').getAllKeys(longitudeRange) as Promise<string[]>;
      
-        const points = pointsByLatitude.filter(point => keysByLongitude.indexOf(point.latlng) !== -1);
+        const points = (await pointsByLatitude).filter(async (point) => (await keysByLongitude).indexOf(point.latlng) !== -1);
 
         const pointsWithPlaces = await Promise.all(points.map(async point => {
             const places = await Promise.all(point.locids.map(async locid => await placeStore.get(locid)));
             return {
                 ...point,
-                places,
+                places: places.filter(place => !!place) as NbnPlace[],
             };
         }));
 
@@ -217,6 +239,9 @@ export class IndexDBDatastore implements IDatastore {
     async getPlacesAtLatLng(latitude: number, longitude: number) : Promise<NbnPlace[]> {
 
         const db = await this.db;
+        if (!db) {
+            throw new Error('Database not ready.');
+        }
 
         const tx = db.transaction('nbnPlaceStore', 'readonly');
         const index = tx.store.index('latlng');

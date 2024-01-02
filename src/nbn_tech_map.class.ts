@@ -15,6 +15,7 @@ import IDatastore from './interfaces/datastore.interface';
 import IMarkerLayer from './interfaces/markerlayer.interface';
 import MarkerLayerCluster from './classes/markerlayer.cluster.class';
 import IControl from './interfaces/control.interface';
+import { isDebugMode } from './utils';
 
 export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const north = Math.ceil(bounds.getNorth() * 50) / 50;
@@ -105,7 +106,7 @@ export default class NbnTechMap {
         // Set default view (Centred over Australia)
         // Get the last map position from local storage
         // If no position is found, default to Australia
-        const startPos = JSON.parse(localStorage.getItem('startpos'));
+        const startPos = JSON.parse(localStorage.getItem('startpos') || '');
         if (startPos) {
             this.map.setView([ startPos.lat, startPos.lng ], startPos.zoom);
         }
@@ -119,12 +120,13 @@ export default class NbnTechMap {
             const zoom = this.map.getZoom();
             localStorage.setItem('startpos', JSON.stringify({ lat: center.lat, lng: center.lng, zoom }));
 
-            await this.displayMarkersInCurrentView();
+            //await this.displayMarkersInCurrentView();
             this.fetchDataForCurrentView();
         });
 
-
-        this.displayMarkersInCurrentView();
+        this.fetchDataForCurrentView();
+        /*this.displayMarkersInCurrentView()
+            .then(() => this.fetchDataForCurrentView())*/
 
         //this.createMap(options.mapContainerId);
         //this.datastore = new MemoryDatastore(this);
@@ -135,61 +137,6 @@ export default class NbnTechMap {
         //this.controls.filter = new ControlFilter(this);
 
         //this.initMap();
-    }
-
-
-    /**
-     * Initialise Map
-     */
-    initMap() {
-
-        // Add event handlers
-        /*
-        this.map.on('locationerror', function(e) {
-            console.error('Error getting location', e);
-        });
-        this.map.on('zoomend', (e) => this.mapChanged(e));
-        this.map.on('moveend', (e) => this.mapChanged(e));
-
-        const locateOnOpen = localStorage.getItem('locate') == 'true';
-        const startPos = JSON.parse(localStorage.getItem('startpos'));
-        */
-
-        /** Setup geocoder */
-        /*
-        this.mapSearch = new L.Control.GPlaceAutocomplete({
-            position: 'topleft',
-            prepend: true,
-            collapsed_mode: true,
-            callback: (place) => {
-                var loc = place.geometry.location;
-                this.map.setView( [loc.lat(), loc.lng()], 18);
-            }
-        }).addTo(this.map);
-        */
-
-        // locate the user
-        /*
-        this.mapLocate = L.control.locate({
-            position: 'topleft',
-            setView: '0untilPan',
-            initialZoomLevel: startPos.zoom || 16,
-        }).addTo(this.map);
-
-        this.map.on('locateactivate', () => localStorage.setItem('locate', 'true'));
-        this.map.on('locatedeactivate', () => localStorage.setItem('locate', 'false'));
-
-        if (locateOnOpen || !startPos) {
-            this.mapLocate.start();
-        }
-        else if( startPos ) {
-            this.map.setView([ startPos.lat, startPos.lng ], startPos.zoom);
-        }
-        else {
-            this.map.setView([ -33.865143, 151.209900 ], 13);
-        }
-        */
-
     }
 
     getBoxesInBounds(bounds: L.LatLngBounds): L.LatLngBounds[] {
@@ -267,7 +214,7 @@ export default class NbnTechMap {
     /**
      * Fetch data for current map view
      */
-    fetchDataForCurrentView() {
+    async fetchDataForCurrentView() {
 
         this.hideMarkersOutsideCurrentView();
         this.displayMarkersInCurrentView();
@@ -275,45 +222,74 @@ export default class NbnTechMap {
         // Get boxes that are currently visible
         const boxes = this.getCurrentViewBoxes();
 
+        if (isDebugMode()) {
+            console.log('Current view boxes', boxes);
+        }
+
         // Don't fetch boxes if more than 80
         if (boxes.length > 80) {
             console.warn('Too many boxes to fetch. Skipping.');
             return;
         }
+        
+        if (isDebugMode()) {
+            console.log('Fetching boxes');
+        }
+        
+        const fetchPromises = boxes.map(box => this.fetchData(box));
 
-        // Fetch each box
-        boxes.forEach((box) => {
-            this.fetchData(box);
-        });
+        if (isDebugMode()) {
+            console.log('Waiting for boxes to be fetched');
+        }
+
+        await Promise.all(fetchPromises);
+
+        if (isDebugMode()) {
+            console.log('All boxes fetched');
+        }
+
+        await this.refreshPointsFromStore(this.map.getBounds().pad(0.5));
         
     }
 
-    fetchData(bounds: L.LatLngBounds, page: number = 1) {
+    async fetchData(
+        bounds: L.LatLngBounds, page: number = 1
+    ) : Promise<void>
+    {
 
-        console.log('Fetching page', page, 'of centrepoint', bounds.getCenter().toString());
+        if (isDebugMode()) {
+            console.log('Fetching Box', bounds.getCenter().toString(), page);
+        }
 
-        this.api
-            .fetchPage(bounds, page, () => this.map.getBounds().intersects(bounds))
-            .then(data => {
-                this.processFetchResult(data, bounds)
-            })
-            .catch(error => {
-                if (error.message == 'Page already loaded this session.') {
-                    return;
-                }
-                console.error(error)
-            })
-        ;
+        try {
+            
+            const data = await this.api.fetchPage(bounds, page, () => this.map.getBounds().intersects(bounds));
+            
+            await this.processFetchResult(data, bounds);
+
+            if (data.next) {
+                return await this.fetchData(bounds, data.next);
+            }
+
+            return;
+
+        } catch (error: any) {
+            if (error.message == 'Page already loaded this session.') {
+                return;
+            }
+            console.error(error)
+        }
+
     }
 
     async processFetchResult(result: NbnPlaceApiResponse, bounds: L.LatLngBounds) {
 
-        console.log('Processing page', (result.next || 2)-1, 'of', result.total, 'with', result.places.length, 'places.');
+        //console.log('Processing page', (result.next || 2)-1, 'of', result.total, 'with', result.places.length, 'places.');
 
         // If more pages, start fetching next page
-        if (result.next) {
+        /*if (result.next) {
             this.fetchData(bounds, result.next);
-        }
+        }*/
 
         // Process places
         console.log('Storing places.')
@@ -322,8 +298,8 @@ export default class NbnTechMap {
         await processPromise;
 
         // Refresh points inside bounds
-        console.log('Refreshing points inside bounds.');
-        await this.refreshPointsFromStore(bounds);
+        //console.log('Refreshing points inside bounds.');
+        //await this.refreshPointsFromStore(bounds);
 
     }
 

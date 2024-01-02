@@ -7,7 +7,7 @@ export default interface IDatastore {
     storePlace(place: NbnPlace) : Promise<void>;
     storePlaces(places: NbnPlace[]) : Promise<void>;
     
-    getPlace(locid: string) : Promise<NbnPlace>;
+    getPlace(locid: string) : Promise<NbnPlace | undefined>;
     getPlaces(): Promise<NbnPlace[]>;
 
     getPoints() : Promise<PointAndLocids[]>;

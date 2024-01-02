@@ -8,6 +8,8 @@
       "allowJs": true,
       "moduleResolution": "node",
       "sourceMap": true,
-      "downlevelIteration": true
+      "downlevelIteration": true,
+      "forceConsistentCasingInFileNames": true,
+      "strict": true
     }
 }

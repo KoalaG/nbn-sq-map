@@ -29,14 +29,39 @@
             width: 100vw;
         }
         .marker-cluster div {
-            border-radius: 50%;
-            width: 10px;
-            height: 10px;
-            border: 1px solid #000000;
-            font-size: 8px;
-            text-align: center;
-            opacity: 0.8;
+            min-width: 30px;
+            min-height: 30px;
+            aspect-ratio:1;
+            position:relative;
+            display:inline-grid;
+            margin:5px;
+            place-content:center;
+            font-size:12px;
+            font-family:sans-serif;
         }
+        .marker-cluster div span {
+            margin: 0 10px;
+        }
+
+        .marker-cluster div:before,
+        .marker-cluster div:after {
+        content:"";
+        position:absolute;
+        border-radius:50%;
+        }
+        .marker-cluster div:before {
+        inset:0;
+        background:
+            conic-gradient(
+            darkred 0%,
+            darkred 25%,
+            black 25%,
+            black 100%
+            );
+        -webkit-mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
+                mask:radial-gradient(#0000 20%, #000 60%,#000 100%);
+        }
+
     </style>
 
 </head>

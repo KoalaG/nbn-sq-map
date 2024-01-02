@@ -11,6 +11,7 @@ import LipApi from "./api/lip_api.class";
 import NbnTechMap from "./nbn_tech_map.class";
 import ControDisplayMode from "./controls/control_display_mode.class";
 import { NbnPlace } from "./types";
+import { MemoryDatastore } from "./datastore/datastore.memory.class";
 
 /**
  * @function ready
@@ -29,22 +30,30 @@ function ready(fn: () => void) {
     }
 }
 
-/*
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/service-worker.dev.js').then(registration => {
+            console.log('DEV SW registered: ', registration);
+        }).catch(registrationError => {
+            console.log('DEV SW registration failed: ', registrationError);
+        });
+        
         navigator.serviceWorker.register('/service-worker.js').then(registration => {
             console.log('SW registered: ', registration);
         }).catch(registrationError => {
             console.log('SW registration failed: ', registrationError);
         });
+
     });
-}*/
+}
 
 // Execute when DOM is ready.
 ready(function() {
 
     const mapApi = new LipApi();
-    const datastore = new IndexDBDatastore();
+    //const datastore = new IndexDBDatastore();
+    const datastore = new MemoryDatastore();
 
     let displayMode = 'all';
 

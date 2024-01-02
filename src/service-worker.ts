@@ -33,6 +33,65 @@ self.addEventListener("activate", function (event) {
     );
 });
 
+async function fromCacheFirst(cacheName: string, request: Request, days: number = cacheDuration) {
+
+    if (request.headers.get('sw-no-cache')) {
+        return await fromNetworkFirst(cacheName, request);
+    }
+
+    const cache = await caches.open(cacheName);
+    const cachedResponse = await cache.match(request);
+
+    if (cachedResponse && isValid(cachedResponse)) {
+        console.debug('fromCacheFirst: cached response', request.url)
+        return cachedResponse;
+    }
+    
+    const networkResponse = await fetch(request);
+
+    let cacheCopy = networkResponse.clone();
+    let headers = new Headers(cacheCopy.headers);
+    headers.append('sw-fetched-on', new Date().getTime().toString());
+    cache.put(request, new Response(cacheCopy.body, {
+        status: cacheCopy.status,
+        statusText: cacheCopy.statusText,
+        headers: headers
+    }));
+    
+    console.debug('fromCacheFirst: network response', request.url)
+    return networkResponse;
+
+}
+
+async function fromNetworkFirst(cacheName: string, request: Request) {
+    
+    const cache = await caches.open(cacheName);
+
+    try {
+        const networkResponse = await fetch(request);
+        let cacheCopy = networkResponse.clone();
+        let headers = new Headers(cacheCopy.headers);
+        headers.append('sw-fetched-on', new Date().getTime().toString());
+        cache.put(request, new Response(cacheCopy.body, {
+            status: cacheCopy.status,
+            statusText: cacheCopy.statusText,
+            headers: headers
+        }));
+        console.debug('fromNetworkFirst: network response', request.url)
+        return networkResponse;
+    } catch (error) {
+        const cachedResponse = await cache.match(request);
+        if (cachedResponse && isValid(cachedResponse)) {
+            console.debug('fromNetworkFirst: cached response', request.url)
+            return cachedResponse;
+        }
+        throw error;
+    }
+
+}
+
+
+
 self.addEventListener("fetch", function(event) {
 
     const request = event.request;
@@ -49,80 +108,20 @@ self.addEventListener("fetch", function(event) {
 
     // Fetch map tiles from cache if available
     if (event.request.url.includes('/rastertiles/')) {
-        event.respondWith(caches.open(`${cacheName}-tiles`).then((cache) => {
-            return cache.match(event.request).then((cachedResponse) => {
-                if (isValid(cachedResponse)) {
-                    return cachedResponse;
-                }
-
-                return fetch(event.request).then((networkResponse) => {
-                    let cacheCopy = networkResponse.clone();
-                    let headers = new Headers(cacheCopy.headers);
-                    headers.append('sw-fetched-on', new Date().getTime().toString());
-                    cache.put(event.request, new Response(cacheCopy.body, {
-                        status: cacheCopy.status,
-                        statusText: cacheCopy.statusText,
-                        headers: headers
-                    }));
-
-                    return networkResponse;
-                }).catch(() => {
-                    return cachedResponse;
-                });
-            });
-        }));
+        return event.respondWith(fromCacheFirst(`${cacheName}-tiles`, event.request, 30));
     }
 
     // API Requests
     if (event.request.url.includes('/nbn-bulk/map/')) {
-        event.respondWith(caches.open(`${cacheName}-places`).then((cache) => {
-            return cache.match(event.request).then((cachedResponse) => {
-                if (isValid(cachedResponse)) {
-                    return cachedResponse;
-                }
-
-                return fetch(event.request).then((networkResponse) => {
-                    let cacheCopy = networkResponse.clone();
-                    let headers = new Headers(cacheCopy.headers);
-                    headers.append('sw-fetched-on', new Date().getTime().toString());
-                    cache.put(event.request, new Response(cacheCopy.body, {
-                        status: cacheCopy.status,
-                        statusText: cacheCopy.statusText,
-                        headers: headers
-                    }));
-
-                    return networkResponse;
-                }).catch(() => {
-                    return cachedResponse;
-                });
-            });
-        }));
+        return event.respondWith(fromCacheFirst(`${cacheName}-places`, event.request, 1));
     }
 
+    // Everything else
     if (event.request.url.startsWith(this.origin)) {
-        event.respondWith(
-            fetch(request)
-                .then(function (response) {
-                    // Stash a copy of this page in the cache
-                    const copy = response.clone();
-                    caches.open(`${cacheName}-other`).then(function (cache) {
-                        cache.put(request, copy);
-                    });
-                    return response;
-                })
-                .catch(function () {
-                    return caches.match(request).then(function (response) {
-                        // return the cache response or the /offline page.
-                        return response || caches.match("/offline");
-                    });
-                }) as Promise<Response>
-          );
-          return;
-      
+        return event.respondWith(fromNetworkFirst(`${cacheName}-other`, event.request));
     }
 
-
-    console.log('Unhanled fetch event:', event.request.url);
+    console.log('Unhandled fetch event:', event.request.url);
     return;
 
 });

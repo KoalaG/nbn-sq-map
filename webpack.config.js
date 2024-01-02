@@ -7,7 +7,7 @@ module.exports = {
 
     entry: {
         app: './src/index.ts',
-        //'service-worker': './src/service-worker.ts'
+        'service-worker': './src/service-worker.ts'
     },
 
     devtool: 'inline-source-map',
@@ -35,6 +35,7 @@ module.exports = {
             template: "./src/index.html",
             filename: isDevelopment ? "./index.dev.html" : "./index.html"
         }),
+
         /*new WorkboxPlugin.GenerateSW({
             // these options encourage the ServiceWorkers to get in there fast
             // and not allow any straggling "old" SWs to hang around

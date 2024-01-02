@@ -2,7 +2,7 @@ import IDatastore from "../interfaces/datastore.interface";
 import IMarkerLayer from "../interfaces/markerlayer.interface";
 import 'leaflet.markercluster';
 import 'leaflet.markercluster/dist/MarkerCluster.css';
-import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
+//import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import * as L from "leaflet";
 import { NbnPlace, PointAndLocids, PointAndPlaces } from "../types";
@@ -119,8 +119,8 @@ function getTechColour(techType: string) {
 
 export default class MarkerLayerCluster implements IMarkerLayer {
 
-    private map: L.Map;
-    private datastore: IDatastore;
+    private map?: L.Map;
+    private datastore?: IDatastore;
 
     private markers: L.MarkerClusterGroup;
 
@@ -132,11 +132,56 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             showCoverageOnHover: false,
             zoomToBoundsOnClick: true,
             removeOutsideVisibleBounds: true,
+            iconCreateFunction: this.iconCreateFunction,
             chunkedLoading: true,
+            chunkInterval: 150,
+            chunkDelay: 150,
             chunkProgress: (processed, total, elapsed) => {
-                console.log('chunkProgress', processed, total, elapsed);
+                console.log('chunkProgress', { processed, total, elapsed });
             },
         });
+    }
+
+    private iconCreateFunction(cluster: L.MarkerCluster) : L.DivIcon
+    {
+        
+        const colorArray = cluster.getAllChildMarkers().map((marker) => (marker as any).options.fillColor)
+
+        const colorCounts: {[color: string]: number} = {};
+
+        colorArray.forEach((color) => {
+            if (!colorCounts[color]) {
+                colorCounts[color] = 0;
+            }
+            colorCounts[color]++;
+        });
+
+        const colorArraySorted = Object.keys(colorCounts)
+            .sort((a, b) => colorCounts[b] - colorCounts[a])
+        ;
+
+        let background = 'background: conic-gradient('
+
+        let lastColourPercent = 0;
+
+        colorArraySorted.forEach((color, index) => {
+            if (index == 0) {
+                background += "\n" + color + ' 0%';
+            }
+            const thisColourPercent = (colorCounts[color] / colorArray.length * 100);
+            background += ", \n" + color + ' ' + (lastColourPercent) + '%';
+            background += ", \n" + color + ' ' + (lastColourPercent+thisColourPercent) + '%';
+            lastColourPercent += thisColourPercent;
+        });
+
+        background += "\n);";
+
+        const randomId = Math.random().toString(36).substring(7);
+
+        return L.divIcon({
+            html: `<style>#cluster_${randomId}::before { ${background} }</style> <div id='cluster_${randomId}'><span>` + cluster.getChildCount() + '</span></div>',
+            className: 'marker-cluster',
+        })
     }
 
     markerClusterRadius(zoom: number) {
@@ -154,10 +199,10 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             case 10: return 25;
             case 11: return 25;
             case 12: return 25;
-            case 13: return 24;
-            case 14: return 23;
-            case 15: return 20;
-            case 16: return 15;
+            case 13: return 150;
+            case 14: return 100;
+            case 15:
+            case 16:
             default: return 0;
         }
     }
@@ -168,8 +213,8 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         }
         this.map = map;
         this.markers.addTo(this.map);
-        this.map.on('zoomend', () => {
-            console.log('zoomend', this.map.getZoom());
+        this.map.on('zoomend', (event) => {
+            console.log('zoomend', event.target.getZoom());
         });
         return this;
     }
@@ -187,6 +232,10 @@ export default class MarkerLayerCluster implements IMarkerLayer {
     } = {};
 
     async refreshMarkersInsideBounds(bounds: L.LatLngBounds, mFilter?: (place: NbnPlace) => boolean) {
+
+        if (!this.datastore) {
+            return;
+        }
 
         const newPoints = await this.datastore.getFullPointsWithinBounds(bounds);
         
