@@ -1,16 +1,51 @@
-class ControlLegend {
+import IMode from "../interfaces/mode.interface";
+import { LegendItem } from "../types";
+import AControl from "./control.abstract";
 
-    nbnTechMap = null;
-    control = null;
-    controlDiv = null;
+export default class ControlLegend extends AControl {
+
+    private elControlDiv: HTMLDivElement = document.createElement('div');
     
-    constructor (nbnTechMap) {
-        this.nbnTechMap = nbnTechMap;
-        this.control = L.control({ position: 'bottomright' });
-        this.control.onAdd = (map) => this.addControlDiv(map);
-        this.show();
+    constructor () {
+        super();
+
+        this.control.setPosition('bottomright');
+
+        this.elControlDiv.classList.add('info', 'legend');
+        this.elControlDiv.style.backgroundColor = "#ffffff";
+        this.elControlDiv.style.opacity = "0.8";
+        this.elControlDiv.style.padding = "5px";
+        this.elControlDiv.style.borderRadius = "5px";
+
+        this.control.onAdd = (map: L.Map) => {
+            return this.elControlDiv;
+        }
+        
     }
 
+    getState() {
+        return undefined;
+    }
+
+    updateLegend(items: LegendItem[]) {
+
+        let html = '';
+        items.forEach(item => {
+            html += '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ item.colour +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> ' + item.label;
+            if (item.count) {
+                html += ' (' + item.count + ')';
+            }
+            html += '<br>';
+        });
+
+        this.elControlDiv.innerHTML = html;
+
+    }
+
+
+
+
+    /*
 
     getLegendHTML() {
 
@@ -75,4 +110,5 @@ class ControlLegend {
         this.control.remove();
     }
 
+    */
 }

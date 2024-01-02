@@ -14,6 +14,7 @@ import { NbnPlace } from "./types";
 import { MemoryDatastore } from "./datastore/datastore.memory.class";
 import MarkerLayerCluster from "./classes/markerlayer.cluster.class";
 import AllMode from "./modes/mode.all";
+import ControlLegend from "./controls/control_legend.class";
 
 /**
  * @function ready
@@ -76,6 +77,9 @@ ready(function() {
     nbnTechMap.addControl('displaymode', cDisplayMode);
 
     // Legend Control
+    const cLegend = new ControlLegend();
+    cLegend.updateLegend(modeAll.getLegendItems());
+    nbnTechMap.addControl('legend', cLegend);
 
     // Search Control
 

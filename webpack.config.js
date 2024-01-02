@@ -1,7 +1,8 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
 const WorkboxPlugin = require('workbox-webpack-plugin');
 
-const isDevelopment = true;
+const isDevelopment = process.env.NODE_ENV === 'development'
+    || process.argv.includes('development');
 
 const CACHE_ID = 'NTMv1';
 
@@ -105,7 +106,7 @@ module.exports = {
             filename: isDevelopment ? "./index.dev.html" : "./index.html"
         }),
 
-        // workboxPlugin,
+        isDevelopment ? null : workboxPlugin
      
     ],
 

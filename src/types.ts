@@ -77,3 +77,9 @@ export type ControlEvent = {
     state: any;
     data: any;
 }
+
+export type LegendItem = {
+    label: string;
+    colour: string;
+    count?: number;
+}

@@ -1,5 +1,5 @@
 import IMode from "../interfaces/mode.interface";
-import { NbnPlace, PointAndPlaces } from "../types";
+import { LegendItem, NbnPlace, PointAndPlaces } from "../types";
 import * as L from "leaflet";
 
 import {
@@ -46,9 +46,11 @@ export default class AllMode implements IMode {
     }
 
     pointColour(point: PointAndPlaces) : string {
-        
-        const place = point.places[0];
+        return this.placeColour(point.places[0]);
+    }
 
+    placeColour(place: NbnPlace) : string {
+        
         if (isPlaceFTTP(place)) {
             return colourFTTP;
         }
@@ -159,5 +161,49 @@ export default class AllMode implements IMode {
 
     }
 
+    getLegendItems(): LegendItem[] {
+        return [
+            {
+                label: 'FTTP',
+                colour: colourFTTP,
+            },
+            {
+                label: 'FTTP Upgrade',
+                colour: colourFTTPAvail,
+            },
+            {
+                label: 'FTTP Upgrade Soon',
+                colour: colourFTTPSoon,
+            },
+            {
+                label: 'HFC',
+                colour: colourHFC,
+            },
+            {
+                label: 'FTTC',
+                colour: colourFTTC,
+            },
+            {
+                label: 'FTTN/FTTB',
+                colour: colourFTTNB,
+            },
+            {
+                label: 'FW',
+                colour: colourFW,
+            },
+            {
+                label: 'FW Upgrade',
+                colour: colourFWAvail,
+            },
+            {
+                label: 'Satellite',
+                colour: colourSat,
+            },
+            {
+                label: 'Unknown',
+                colour: colourUnknown,
+            }
+        ];
+    }
 
 }

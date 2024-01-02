@@ -10,9 +10,16 @@ export default abstract class AControl implements IControl {
     protected control: L.Control;
     //protected key: string;
 
+
     protected eventHandlers: {
         [eventName: string]: ((e: ControlEvent) => void)[]
     } = {};
+
+    constructor(/*key: string/*, nbnTechMap: NbnTechMap*/) {
+        //this.key = key;
+        //this.map = nbnTechMap;
+        this.control = new L.Control();
+    }
 
     on(eventName: string, callback: (e: ControlEvent) => void) : void {
         if (!this.eventHandlers[eventName]) {
@@ -36,12 +43,6 @@ export default abstract class AControl implements IControl {
     }
 
     abstract getState() : any;
-
-    constructor(/*key: string/*, nbnTechMap: NbnTechMap*/) {
-        //this.key = key;
-        //this.map = nbnTechMap;
-        this.control = new L.Control();
-    }
 
     public getControl() : L.Control {
         return this.control;

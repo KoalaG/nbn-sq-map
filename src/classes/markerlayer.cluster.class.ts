@@ -277,18 +277,30 @@ export default class MarkerLayerCluster implements IMarkerLayer {
 
         const placeContainers: HTMLElement[] = [];
 
+        places.sort((a, b) => {
+            if (a.address1 < b.address1) {
+                return -1;
+            }
+            if (a.address1 > b.address1) {
+                return 1;
+            }
+            return 0;
+        });
+
         for (let place of places) {
 
             const placeContainer = document.createElement('div');
+
+            const placeColour = this.modeHandler.placeColour(place);
 
             // Create Accordion Button
             const button = document.createElement('button');
             button.classList.add('accordion');
             button.type = 'button';
-            button.textContent = place.address1;
-
-            const title = document.createElement('div');
-
+            button.innerHTML = `<svg height="15" width="15" style="margin-right:3px">`
+                + `<circle class="circle" cx="7.5" cy="9" r="5" stroke="#000" stroke-width="1" fill="${placeColour}" />`
+                + `</svg>`
+                + `<span>${place.address1}</span>`
             
             // Add Panel
             const panel = document.createElement('div');

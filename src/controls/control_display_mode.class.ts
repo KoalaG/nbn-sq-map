@@ -5,11 +5,11 @@ import AControl from "./control.abstract";
 export default class ControDisplayMode extends AControl {
 
     private displayMode = 'all';
-    private elControlDiv: HTMLDivElement = document.createElement('div');;
-    private elDropdown: HTMLSelectElement = document.createElement('select');;
+    private elControlDiv: HTMLDivElement = document.createElement('div');
+    private elDropdown: HTMLSelectElement = document.createElement('select');
 
-    constructor (/*key: string/*, nbnTechMap: NbnTechMap*/) {
-        super(/*key, nbnTechMap*/);
+    constructor () {
+        super();
 
         this.generateControlDiv();
         this.control.onAdd = (map: L.Map) => {
@@ -67,6 +67,7 @@ export default class ControDisplayMode extends AControl {
         allOption.innerText = 'Show All Locations';
         dropdown.appendChild(allOption);
 
+        /*
         const upgradeOption = document.createElement('option');
         upgradeOption.value = 'upgrade';
         upgradeOption.innerText = 'Tech Upgrades';
@@ -76,6 +77,7 @@ export default class ControDisplayMode extends AControl {
         eeOption.value = 'ee';
         eeOption.innerText = 'Enterprise Ethernet';
         dropdown.appendChild(eeOption);
+        */
 
         dropdown.addEventListener('change', (e) => this.changeMode((e.target as HTMLSelectElement).value));
 
