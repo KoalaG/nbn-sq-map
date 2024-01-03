@@ -1,12 +1,13 @@
 const HtmlWebpackPlugin = require("html-webpack-plugin");
-const WorkboxPlugin = require('workbox-webpack-plugin');
+const { GenerateSW } = require('workbox-webpack-plugin');
+const WebpackPwaManifest = require('webpack-pwa-manifest');
 
 const isDevelopment = process.env.NODE_ENV === 'development'
     || process.argv.includes('development');
 
 const CACHE_ID = 'NTMv1';
 
-const workboxPlugin = new WorkboxPlugin.GenerateSW({
+const workboxPlugin = new GenerateSW({
     // these options encourage the ServiceWorkers to get in there fast
     // and not allow any straggling "old" SWs to hang around
     clientsClaim: true,
@@ -16,7 +17,6 @@ const workboxPlugin = new WorkboxPlugin.GenerateSW({
     cleanupOutdatedCaches: true,
 
     inlineWorkboxRuntime: false,
-    
 
     // Define runtime caching rules.
     runtimeCaching: [
@@ -93,7 +93,11 @@ module.exports = {
             {
                 test: /\.css$/i,
                 use: ['style-loader', 'css-loader'],
-            }
+            },
+            {
+                test: /\.(png|svg|jpg|jpeg|gif)$/i,
+                type: 'asset/resource',                
+            },
         ]
     },
 
@@ -105,6 +109,58 @@ module.exports = {
         new HtmlWebpackPlugin({
             template: "./src/index.html",
             filename: isDevelopment ? "./index.dev.html" : "./index.html"
+        }),
+
+        new WebpackPwaManifest({
+            name: 'NBN SQ Map',
+            short_name: 'NSM',
+            description: 'National Broadband Network Service Qualification Map',
+            background_color: '#ffffff',
+            crossorigin: null,
+            'start_url': isDevelopment ? './index.dev.html' : './index.html',
+            display: 'standalone',
+
+            ios: true,
+            publicPath: './',
+
+            icons: [
+                {
+                    src: './src/assets/logo.svg',
+                    sizes: [ 1000 ],
+                },
+                {
+                    src: './src/assets/logo.svg',
+                    sizes: [ 1000 ],
+                    ios: 'startup',
+                },
+                {
+                    src: './src/assets/logo.svg',
+                    size: '1000x1000',
+                    purpose: 'maskable'
+                }
+            ],
+
+            screenshots: [
+                {
+                    form_factor: 'wide',
+                    label: 'View nbn locations at street level',
+                    src: './91a83bbcaa7854cd150e.png',
+                    size: '1856×878',
+                },
+                {
+                    form_factor: 'wide',
+                    label: 'See technology areas at a city level',
+                    src: './e01c0d3d072cedcaf4d0.png',
+                    size: '1855×883',
+                },
+                {
+                    form_factor: 'narrow',
+                    label: 'Take your map with you on the go',
+                    src: './e9948aecf44289fffa34.png',
+                    size: '357×770',
+                }
+            ],
+
         }),
 
         isDevelopment ? undefined : workboxPlugin

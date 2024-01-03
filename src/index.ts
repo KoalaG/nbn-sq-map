@@ -13,12 +13,23 @@ import { MemoryDatastore } from "./datastore/datastore.memory.class";
 import AllMode from "./modes/mode.all";
 import ControlLegend from "./controls/control_legend.class";
 
+import './assets/Screenshot1.png';
+import './assets/Screenshot2.png';
+import './assets/Screenshot3.png';
+
 import { Logger } from "./utils";
 import { NbnPlace } from "./types";
 const logger = new Logger('index.ts');
 
-const isDevelopment = process.env.NODE_ENV === 'development' || process.argv.includes('development')
+const isDevelopment = (() => {
+    try {
+        return process.env.NODE_ENV === 'development' || process.argv.includes('development');
+    } catch (e) {
+        return false;
+    }
+})();
 logger.debug('isDevelopment', isDevelopment);
+
 if ('serviceWorker' in navigator && !isDevelopment) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').then(registration => {
