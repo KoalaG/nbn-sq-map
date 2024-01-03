@@ -107,9 +107,9 @@ module.exports = {
             filename: isDevelopment ? "./index.dev.html" : "./index.html"
         }),
 
-        isDevelopment ? null : workboxPlugin
+        isDevelopment ? undefined : workboxPlugin
      
-    ],
+    ].filter(p => p),
 
     output: {
         filename: isDevelopment ? '[name].dev.js' : '[name].[contenthash].js',

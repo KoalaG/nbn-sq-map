@@ -1,5 +1,46 @@
 import { NbnPlace } from "./types";
 
+
+export class Logger {
+
+    sub(name: string) {
+        return new Logger(`${this.name}.${name}`);
+    }
+
+    constructor(private name: string) {
+    }
+
+    error(...args: any[]) {
+        console.error(`[${this.name}]`, ...args);
+    }
+
+    warn(...args: any[]) {
+        console.warn(`[${this.name}]`, ...args);
+    }
+
+    debug(...args: any[]) {
+        if (isDebugMode()) {
+            console.debug(`[${this.name}]`, ...args);
+        }
+    }
+    
+    info(...args: any[]) {
+        console.info(`[${this.name}]`, ...args);
+    }
+
+    log(...args: any[]) {
+        console.log(`[${this.name}]`, ...args);
+    }
+}
+
+export function chunkArray<T>(array: T[], size: number): T[][] {
+    const results = [];
+    while (array.length) {
+        results.push(array.splice(0, size));
+    }
+    return results;
+}
+
 export function isDebugMode() {
     return process.env.NODE_ENV === 'development'
         || window.location.href.includes('localhost')

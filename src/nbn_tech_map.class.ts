@@ -1,6 +1,16 @@
+
+import 'leaflet/dist/leaflet.css';
 import * as L from 'leaflet';
 
-import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from './types';
+import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'
+import 'leaflet.locatecontrol';
+
+import "esri-leaflet-geocoder/dist/esri-leaflet-geocoder.css";
+import "esri-leaflet-geocoder/dist/esri-leaflet-geocoder";
+import * as ELG from "esri-leaflet-geocoder";
+
+
+import { NbnPlace, NbnPlaceApiResponse, NbnTechMapOptions } from './types';
 //import MarkerGroup from './marker_group.class.ts.dev';
 //import ControlZoomWarning from './control_zoom_warning.class';
 //import ControlFilter from './control_filter.class';
@@ -8,15 +18,15 @@ import { NbnPlace, PointAndLocids, NbnPlaceApiResponse, NbnTechMapOptions } from
 //import 'leaflet-google-places-autocomplete';
 //import * as MarkerCluster from 'leaflet.markercluster';
 
-//import * as LocateControl from 'leaflet.locatecontrol';
-//import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'
 import IApi from './interfaces/api.interface';
 import IDatastore from './interfaces/datastore.interface';
 import IMarkerLayer from './interfaces/markerlayer.interface';
-import MarkerLayerCluster from './classes/markerlayer.cluster.class';
+import MarkerLayerCluster from './markerlayer/markerlayer.cluster.class';
 import IControl from './interfaces/control.interface';
-import { isDebugMode } from './utils';
+import { chunkArray, isDebugMode } from './utils';
 import IMode from './interfaces/mode.interface';
+
+import { Logger } from "./utils";
 
 export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const north = Math.ceil(bounds.getNorth() * 50) / 50;
@@ -29,6 +39,8 @@ export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
 const MAX_BOXES_IN_VIEW = 1000;
 
 export default class NbnTechMap {
+
+    private logger = new Logger('NbnTechMap');
 
     static readonly DEFAULT_OPTIONS: Partial<NbnTechMapOptions> = {
         mapContainerId: 'map',
@@ -50,8 +62,8 @@ export default class NbnTechMap {
     private api: IApi;
 
 
-    private mapLocate: any;
-    private mapSearch: any;
+    private mapLocate: L.Control.Locate;
+    //private mapSearch: L.esri.Geocoding.Geosearch;
 
     /**
      * @Property {datastore} - Datastore object.
@@ -103,22 +115,45 @@ export default class NbnTechMap {
             attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
             subdomains: 'abcd',
             crossOrigin: true,
+            minZoom: 5,
             maxZoom: 20
         });
 
         // Add the layer to the map
         this.mapTileLayer.addTo(this.map);
 
-        // Set default view (Centred over Australia)
-        // Get the last map position from local storage
-        // If no position is found, default to Australia
-        const startPos = JSON.parse(localStorage.getItem('startpos') || '');
-        if (startPos) {
-            this.map.setView([ startPos.lat, startPos.lng ], startPos.zoom);
-        }
-        else {
-            this.map.setView([ -26.1772288, 133.4170119 ], 4);
-        }
+        // Add search control
+        //this.mapSearch = new ELG.
+        /*
+        
+        this.mapSearch = L.esri.Geocoding.geosearch({
+            position: 'topleft',
+            providers: [
+                L.esri.Geocoding.arcgisOnlineProvider({
+                    countries: ['AU'],
+                    token: 'AAPKa97b8a5374db4fa9b0fdd8e55361cba4Z9fEuw3ckAOIFHK1CP_VbzTv3OTeUz3ggrFAzVPzjyn3Q7bQFzbwkDMvDxaJ-JzG'
+                })
+            ]
+        });
+        this.mapSearch.addTo(this.map)
+        */
+
+        // Add locate control
+        this.mapLocate = L.control.locate({
+            position: 'topleft',
+            locateOptions: {
+                maxZoom: 16
+            },
+            setView: 'untilPan',
+            keepCurrentZoomLevel: true,
+            initialZoomLevel: 17,
+            cacheLocation: true,
+        });
+        this.mapLocate.addTo(this.map);
+        this.map.on('locateactivate', () => { localStorage.setItem('geolocate', '1'); });
+        this.map.on('locatedeactivate', () => { localStorage.removeItem('geolocate'); });
+
+        this.setInitialMapView();
         
         // store map position when moved or zoomed
         this.map.on('moveend', async () => {
@@ -130,7 +165,7 @@ export default class NbnTechMap {
             this.fetchDataForCurrentView();
         });
 
-        this.fetchDataForCurrentView();
+        //this.fetchDataForCurrentView();
         /*this.displayMarkersInCurrentView()
             .then(() => this.fetchDataForCurrentView())*/
 
@@ -143,6 +178,57 @@ export default class NbnTechMap {
         //this.controls.filter = new ControlFilter(this);
 
         //this.initMap();
+    }
+
+    private getStartPos() : { lat: number, lng: number, zoom: number } | null {
+        const startPosString = localStorage.getItem('startpos');
+        if (!startPosString) {
+            return null;
+        }
+        try {
+            return JSON.parse(startPosString) as { lat: number, lng: number, zoom: number };
+        } catch (error) {
+            return null;
+        }
+    }
+
+    private initialViewSet = false;
+    private setInitialMapView() {
+
+        const logger = this.logger.sub('setInitialMapView');
+
+        if (this.initialViewSet) {
+            logger.warn('Initial map view already set');
+            return;
+        }
+
+        const geoFlag = localStorage.getItem('geolocate');
+        const startPos = this.getStartPos();
+
+        // If local storage contains last map position, set map to that
+        if (startPos) {
+            this.map.setView([ startPos.lat, startPos.lng ], startPos.zoom);
+            this.initialViewSet = true;
+        }
+
+        // Set to Australia if no start position
+        if (!startPos) {
+            this.map.setView([ -26.1772288, 133.4170119 ], 10);
+            this.initialViewSet = true;
+        }
+
+        // If local storage contains geolocate flag
+        // or, if no start position, start geolocation
+        if (geoFlag || !startPos) {
+            this.mapLocate.start();
+            this.map.setZoom(17);
+            this.initialViewSet = true;
+        }
+
+        if (!this.initialViewSet) {
+            logger.error('Could not set initial map view');
+        }
+
     }
 
     getBoxesInBounds(bounds: L.LatLngBounds): L.LatLngBounds[] {
@@ -187,11 +273,6 @@ export default class NbnTechMap {
      * Hide markers that are outside the map bounds
      */
     hideMarkersOutsideCurrentView() {
-        if (!this.markerLayer) {
-            throw new Error('Marker Layer not set');
-        }
-
-        // Hide markers that are outside the map bounds
         const mapBounds = this.map.getBounds().pad(0.5);
         this.markerLayer.removeMarkersOutsideBounds(mapBounds);
     }
@@ -226,40 +307,43 @@ export default class NbnTechMap {
      */
     async fetchDataForCurrentView() {
 
+        const logger = this.logger.sub('fetchDataForCurrentView');
+
         this.hideMarkersOutsideCurrentView();
         this.displayMarkersInCurrentView();
+
+        if (this.map.getZoom() < 11) {
+            logger.warn('Zoom level too low. Skipping.');
+            return;
+        }
 
         // Get boxes that are currently visible
         const boxes = this.getCurrentViewBoxes();
 
-        if (isDebugMode()) {
-            console.log('Current view boxes', boxes);
-        }
+        logger.debug('Current view boxes', boxes);
 
         // Don't fetch boxes if more than 80
         if (boxes.length > MAX_BOXES_IN_VIEW) {
-            console.warn('Too many boxes to fetch. Skipping.');
+            logger.warn('Too many boxes to fetch. Skipping.');
             return;
         }
+
+        logger.debug('Fetching boxes', boxes.length);
         
-        if (isDebugMode()) {
-            console.log('Fetching boxes');
-        }
-        
-        const fetchPromises = boxes.map(box => this.fetchData(box));
+        // Chunk boxes into groups of 10
+        const boxChunks = chunkArray(boxes, 10);
 
-        if (isDebugMode()) {
-            console.log('Waiting for boxes to be fetched');
-        }
+        logger.debug('Box chunks', boxChunks.length, boxChunks);
 
-        await Promise.all(fetchPromises);
-
-        if (isDebugMode()) {
-            console.log('All boxes fetched');
+        for (let i = 0; i < boxChunks.length; i++) {
+            const fetchPromises = boxChunks[i].map(box => this.fetchData(box));
+            logger.debug('Fetch promises', fetchPromises.length, fetchPromises);
+            await Promise.all(fetchPromises);
+            this.refreshPointsFromStore(this.map.getBounds().pad(0.5));
         }
 
-        await this.refreshPointsFromStore(this.map.getBounds().pad(0.5));
-        
+        logger.debug('All boxes fetched');
+
     }
 
     async fetchData(

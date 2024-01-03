@@ -6,27 +6,29 @@
  * @license MIT
  */
 
-import { IndexDBDatastore } from "./datastore/datastore.indexdb.class";
 import LipApi from "./api/lip_api.class";
 import NbnTechMap from "./nbn_tech_map.class";
 import ControDisplayMode from "./controls/control_display_mode.class";
-import { NbnPlace } from "./types";
 import { MemoryDatastore } from "./datastore/datastore.memory.class";
-import MarkerLayerCluster from "./classes/markerlayer.cluster.class";
 import AllMode from "./modes/mode.all";
 import ControlLegend from "./controls/control_legend.class";
 
-import 'leaflet/dist/leaflet.css';
+import { Logger } from "./utils";
+import { NbnPlace } from "./types";
+const logger = new Logger('index.ts');
 
-if ('serviceWorker' in navigator) {
+const isDevelopment = process.env.NODE_ENV === 'development' || process.argv.includes('development')
+logger.debug('isDevelopment', isDevelopment);
+if ('serviceWorker' in navigator && !isDevelopment) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./service-worker.js').then(registration => {
-            console.log('SW registered: ', registration);
+            logger.info('SW registered: ', registration);
         }).catch(registrationError => {
-            console.log('SW registration failed: ', registrationError);
+            logger.warn('SW registration failed: ', registrationError);
         });
     });
 }
+
 
 /**
  * @function ready
@@ -55,8 +57,6 @@ ready(function() {
 
     const modeAll = new AllMode();
 
-    let displayMode = 'all';
-
     const nbnTechMap = new NbnTechMap({
         mapContainerId: 'map',
         api: mapApi,
@@ -66,23 +66,9 @@ ready(function() {
     });
 
 
-
-    // Add MarkerController
-    /*
-    nbnTechMap.setMarkerFilter((place: NbnPlace) => {
-        switch (displayMode) {
-            case 'all':
-                return true;
-            case 'upgrade':
-                return place.programType != null;
-            case 'ee':
-                return place.ee;
-            default:
-                return true;
-        }
-    });*/
-
-    // Add controls
+    /**
+     * Add Controls to Map
+     */
 
     // Display Mode Control
     const cDisplayMode = new ControDisplayMode();
