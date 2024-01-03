@@ -5,18 +5,13 @@ import * as L from 'leaflet';
 import 'leaflet.locatecontrol/dist/L.Control.Locate.min.css'
 import 'leaflet.locatecontrol';
 
-import "esri-leaflet-geocoder/dist/esri-leaflet-geocoder.css";
-import "esri-leaflet-geocoder/dist/esri-leaflet-geocoder";
-import * as ELG from "esri-leaflet-geocoder";
-
+import 'leaflet-control-geocoder/dist/Control.Geocoder.css';
+import { Geocoder, geocoder, geocoders } from 'leaflet-control-geocoder';
 
 import { NbnPlace, NbnPlaceApiResponse, NbnTechMapOptions } from './types';
 //import MarkerGroup from './marker_group.class.ts.dev';
 //import ControlZoomWarning from './control_zoom_warning.class';
 //import ControlFilter from './control_filter.class';
-
-//import 'leaflet-google-places-autocomplete';
-//import * as MarkerCluster from 'leaflet.markercluster';
 
 import IApi from './interfaces/api.interface';
 import IDatastore from './interfaces/datastore.interface';
@@ -63,7 +58,7 @@ export default class NbnTechMap {
 
 
     private mapLocate: L.Control.Locate;
-    //private mapSearch: L.esri.Geocoding.Geosearch;
+    private mapSearch: Geocoder;
 
     /**
      * @Property {datastore} - Datastore object.
@@ -122,21 +117,30 @@ export default class NbnTechMap {
         // Add the layer to the map
         this.mapTileLayer.addTo(this.map);
 
-        // Add search control
-        //this.mapSearch = new ELG.
-        /*
-        
-        this.mapSearch = L.esri.Geocoding.geosearch({
-            position: 'topleft',
-            providers: [
-                L.esri.Geocoding.arcgisOnlineProvider({
-                    countries: ['AU'],
-                    token: 'AAPKa97b8a5374db4fa9b0fdd8e55361cba4Z9fEuw3ckAOIFHK1CP_VbzTv3OTeUz3ggrFAzVPzjyn3Q7bQFzbwkDMvDxaJ-JzG'
-                })
-            ]
+        console.log({ L, Geocoder, geocoder });
+
+        // Add geocoder control
+        const mapGeocoder = new geocoders.ArcGis({
+            apiKey: 'AAPKa97b8a5374db4fa9b0fdd8e55361cba4Z9fEuw3ckAOIFHK1CP_VbzTv3OTeUz3ggrFAzVPzjyn3Q7bQFzbwkDMvDxaJ-JzG',
+            geocodingQueryParams: {
+                countryCode: 'AU',
+                category: 'Address,LatLong,Neighborhood,District,City,Metro Area',
+            }
         });
-        this.mapSearch.addTo(this.map)
-        */
+        this.mapSearch = (L.Control as unknown as { geocoder: typeof geocoder }).geocoder({
+            position: 'topleft',
+            collapsed: true,
+            defaultMarkGeocode: false,
+            geocoder: mapGeocoder,
+            suggestMinLength: 5,
+            suggestTimeout: 1000,
+        });
+        this.mapSearch.on('markgeocode', (event) => {
+            const bbox = event.geocode.bbox;
+            this.map.fitBounds(bbox);
+        });
+        this.mapSearch.addTo(this.map);
+
 
         // Add locate control
         this.mapLocate = L.control.locate({
@@ -160,24 +164,24 @@ export default class NbnTechMap {
             const center = this.map.getCenter();
             const zoom = this.map.getZoom();
             localStorage.setItem('startpos', JSON.stringify({ lat: center.lat, lng: center.lng, zoom }));
+            this.pushBrowserHistory();
 
-            //await this.displayMarkersInCurrentView();
+            if (mapGeocoder.options.geocodingQueryParams) {
+                mapGeocoder.options.geocodingQueryParams.location = `${center.lng},${center.lat}`;
+            }
+
+            await this.displayMarkersInCurrentView();
             this.fetchDataForCurrentView();
         });
 
-        //this.fetchDataForCurrentView();
-        /*this.displayMarkersInCurrentView()
-            .then(() => this.fetchDataForCurrentView())*/
+        this.fetchDataForCurrentView();
+        
+    }
 
-        //this.createMap(options.mapContainerId);
-        //this.datastore = new MemoryDatastore(this);
-        //this.markerGroup = new MarkerGroup(this);
-        //this.controls.zoomWarning = new ControlZoomWarning(this);
-        //this.controls.displayMode = new ControDisplayMode(this);
-        //this.controls.legend = new ControlLegend(this);
-        //this.controls.filter = new ControlFilter(this);
-
-        //this.initMap();
+    private pushBrowserHistory() {
+        const center = this.map.getCenter();
+        const zoom = this.map.getZoom();
+        window.history.pushState({}, '', `?lat=${center.lat}&lng=${center.lng}&zoom=${zoom}`);
     }
 
     private getStartPos() : { lat: number, lng: number, zoom: number } | null {
@@ -199,6 +203,18 @@ export default class NbnTechMap {
 
         if (this.initialViewSet) {
             logger.warn('Initial map view already set');
+            return;
+        }
+
+        // If lat,lng,zoom are in URL, set map to that
+        const urlParams = new URLSearchParams(window.location.search);
+        const lat = urlParams.get('lat');
+        const lng = urlParams.get('lng');
+        const zoom = urlParams.get('zoom');
+        console.log({ urlParams, lat, lng, zoom })
+        if (lat && lng && zoom) {
+            this.map.setView([ Number(lat), Number(lng) ], parseInt(zoom));
+            this.initialViewSet = true;
             return;
         }
 
