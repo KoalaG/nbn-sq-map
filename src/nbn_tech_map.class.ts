@@ -31,7 +31,7 @@ export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     return L.latLngBounds([south, west], [north, east]);
 }
 
-const MAX_BOXES_IN_VIEW = 1000;
+const MAX_BOXES_IN_VIEW = 500;
 
 export default class NbnTechMap {
 
@@ -135,10 +135,14 @@ export default class NbnTechMap {
             suggestMinLength: 5,
             suggestTimeout: 1000,
         });
+
         this.mapSearch.on('markgeocode', (event) => {
             const bbox = event.geocode.bbox;
-            this.map.fitBounds(bbox);
+            this.map.fitBounds(bbox, {
+                'maxZoom': 16,
+            });
         });
+
         this.mapSearch.addTo(this.map);
 
 
@@ -175,13 +179,34 @@ export default class NbnTechMap {
         });
 
         this.fetchDataForCurrentView();
+
+        window.addEventListener('popstate', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const lat = urlParams.get('lat');
+            const lng = urlParams.get('lng');
+            const zoom = urlParams.get('zoom');
+            if (lat && lng && zoom) {
+                this.map.setView([ Number(lat), Number(lng) ], parseInt(zoom));
+                this.initialViewSet = true;
+            }
+        });
         
     }
 
     private pushBrowserHistory() {
+
+        // Update existing URL with lat,lng,zoom
         const center = this.map.getCenter();
         const zoom = this.map.getZoom();
-        window.history.pushState({}, '', `?lat=${center.lat}&lng=${center.lng}&zoom=${zoom}`);
+
+        const urlParams = new URLSearchParams(window.location.search);
+        urlParams.set('lat', center.lat.toString());
+        urlParams.set('lng', center.lng.toString());
+        urlParams.set('zoom', zoom.toString());
+        const newUrl = window.location.pathname + '?' + urlParams.toString();
+
+        window.history.pushState({}, '', newUrl);
+        
     }
 
     private getStartPos() : { lat: number, lng: number, zoom: number } | null {
@@ -211,7 +236,6 @@ export default class NbnTechMap {
         const lat = urlParams.get('lat');
         const lng = urlParams.get('lng');
         const zoom = urlParams.get('zoom');
-        console.log({ urlParams, lat, lng, zoom })
         if (lat && lng && zoom) {
             this.map.setView([ Number(lat), Number(lng) ], parseInt(zoom));
             this.initialViewSet = true;
@@ -318,6 +342,31 @@ export default class NbnTechMap {
         
     }
 
+    private zoomInWarningControl?: L.Control;
+
+    showZoomInWarning() {
+        if(!this.zoomInWarningControl) {
+            this.zoomInWarningControl = new L.Control({ position: 'topright' });
+            this.zoomInWarningControl.onAdd = () => {
+                const div = L.DomUtil.create('div', 'info legend');
+                div.innerHTML = '<h4 style="margin:0">Area Too Big!</h4>';
+                div.innerHTML += '<p style="margin:0">Location loading is paused until you zoom in.</p>';
+                div.style.backgroundColor = '#ff9800';
+                div.style.opacity = '0.8';
+                div.style.padding = '10px 20px';
+                div.style.color = '#ffffff';
+                return div;
+            }
+        }
+        const zoomInWarningControl = this.zoomInWarningControl;
+        setTimeout(() => this.map.addControl(zoomInWarningControl), 1000);
+    }
+    hideZoomInWarning() {
+        if (this.zoomInWarningControl) {
+            this.map.removeControl(this.zoomInWarningControl);
+        }
+    }
+
     /**
      * Fetch data for current map view
      */
@@ -330,36 +379,147 @@ export default class NbnTechMap {
 
         if (this.map.getZoom() < 11) {
             logger.warn('Zoom level too low. Skipping.');
+            this.showZoomInWarning();
             return;
         }
 
         // Get boxes that are currently visible
         const boxes = this.getCurrentViewBoxes();
-
         logger.debug('Current view boxes', boxes);
 
-        // Don't fetch boxes if more than 80
+        // Don't fetch boxes if more than 50
         if (boxes.length > MAX_BOXES_IN_VIEW) {
             logger.warn('Too many boxes to fetch. Skipping.');
+            this.showZoomInWarning();
             return;
         }
 
-        logger.debug('Fetching boxes', boxes.length);
+        const updateKey = this.map.getCenter().toString() + this.map.getZoom();
+        const progressItem = this.createProgress(updateKey, boxes.length, 'Fetching boxes...');
+
+        this.hideZoomInWarning();
         
         // Chunk boxes into groups of 10
         const boxChunks = chunkArray(boxes, 10);
-
         logger.debug('Box chunks', boxChunks.length, boxChunks);
 
+        let boxesProcessed = 0;
+
         for (let i = 0; i < boxChunks.length; i++) {
-            const fetchPromises = boxChunks[i].map(box => this.fetchData(box));
+
+            if (this.map.getCenter().toString() + this.map.getZoom() != updateKey) {
+                logger.debug('Map moved. Cancelling fetch.');
+                progressItem.text = 'Map moved. Cancelling fetch.';
+                this.updateProgress(updateKey, boxesProcessed, true);
+                return;
+            }
+
+            const fetchPromises = boxChunks[i].map(async (box, i2) => {
+                await this.fetchData(box);
+                boxesProcessed++;
+                this.updateProgress(updateKey, boxesProcessed, false);
+            });
+
             logger.debug('Fetch promises', fetchPromises.length, fetchPromises);
             await Promise.all(fetchPromises);
             this.refreshPointsFromStore(this.map.getBounds().pad(0.5));
         }
 
+        this.updateProgress(updateKey, boxesProcessed, true);
         logger.debug('All boxes fetched');
 
+    }
+
+    private progressControl = new L.Control({ position: 'bottomleft' });
+    private progressItems: {
+        [key: string]: {
+            started: Date,
+            finished?: Date,
+            text: string,
+            complete: boolean,
+            progress: number,
+            total: number,
+        }
+    } = {};
+
+    private createProgress(key: string, total: number, text: string) {
+        // Create new item
+        this.progressItems[key] = {
+            started: new Date(),
+            finished: undefined,
+            complete: false,
+            progress: 0,
+            total, text
+        }
+        return this.progressItems[key];
+    }
+
+    private updateProgress(key: string, progress: number, complete: boolean) {
+        if (!this.progressItems[key]) {
+            throw new Error(`Progress item with key ${key} does not exist`);
+        }
+        this.progressItems[key].finished = complete ? new Date() : undefined;
+        this.progressItems[key].complete = complete;
+        this.progressItems[key].progress = progress;
+        this.renderProgress();
+    }
+    private renderProgress() {
+
+        // Delete items finished more than 5 seconds ago
+        const now = new Date();
+        const keys = Object.keys(this.progressItems);
+        for (let i = 0; i < keys.length; i++) {
+            const key = keys[i];
+            if (!this.progressItems[key]) continue;
+            const finished = this.progressItems[key].finished;
+            if (finished) {
+                if ((now.getTime() - finished.getTime()) > 5000) {
+                    delete this.progressItems[key];
+                }
+            }
+        }
+
+        // If no items, hide progress
+        if (Object.keys(this.progressItems).length == 0) {
+            this.hideProgress();
+            return;
+        }
+
+        // Render progress
+        this.progressControl.onAdd = () => {
+            const div = L.DomUtil.create('div', 'info legend');
+            div.innerHTML = '<h4 style="margin:0">Loading...</h4>';
+            const items = Object.values(this.progressItems);
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                // skip item if finished more than 10 seconds ago
+                if (item.finished && (new Date().getTime() - item.finished.getTime() > 10000)) {
+                    continue;
+                }
+                const progress = item.progress / item.total * 100;
+                const progressText = item.complete ? 'Complete' : `${item.progress} of ${item.total}`;
+                div.innerHTML += `<p style="margin:0">${item.text} (${progressText})</p>`;
+                div.innerHTML += `<progress value="${progress}" max="100"></progress>`;
+            }
+            div.style.backgroundColor = '#000000';
+            div.style.opacity = '0.8';
+            div.style.padding = '10px 20px';
+            div.style.color = '#ffffff';
+            return div;
+        }
+
+        // Add progress to map
+        this.map.addControl(this.progressControl);
+
+        // Hide progress after 5 seconds if all complete
+        setTimeout(() => {
+            if (Object.values(this.progressItems).every(item => item.complete)) {
+                this.hideProgress();
+            }
+        }, 5000);
+    }
+    private hideProgress() {
+        this.map.removeControl(this.progressControl);
     }
 
     async fetchData(
@@ -485,21 +645,6 @@ export default class NbnTechMap {
         this.markerFilter = filter;
         this.markerLayer.refreshMarkersInsideBounds(this.map.getBounds(), this.markerFilter);
     }
-
-    /*private setMarkerLayer(markerLayer: IMarkerLayer) {
-
-        if (this.markerLayer) {
-            this.markerLayer.removeAllMarkers();
-        }
-
-        this.markerLayer = markerLayer;
-        this.markerLayer.setMap(this.map);
-        this.markerLayer.setDatastore(this.datastore);
-
-        this.markerLayer.refreshMarkersInsideBounds(
-            this.map.getBounds(), this.markerFilter
-        );
-    }*/
 
     setModeHandler(modeHandler: IMode) {
         this.modeHandler = modeHandler;
