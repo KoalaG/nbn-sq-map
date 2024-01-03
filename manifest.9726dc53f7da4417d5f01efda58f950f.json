@@ -1,0 +1,47 @@
+{
+  "icons": [
+    {
+      "src": "./icon_1000x1000.a53a659fbaecd0292d49fe76650cdeef.svg",
+      "sizes": "1000x1000",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "./icon_1000x1000.a53a659fbaecd0292d49fe76650cdeef.svg",
+      "sizes": "1000x1000",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "./icon_1000x1000.a53a659fbaecd0292d49fe76650cdeef.svg",
+      "sizes": "1000x1000",
+      "type": "image/svg+xml"
+    }
+  ],
+  "name": "NBN SQ Map",
+  "short_name": "NSM",
+  "orientation": "portrait",
+  "display": "standalone",
+  "start_url": "./index.html",
+  "description": "National Broadband Network Service Qualification Map",
+  "background_color": "#ffffff",
+  "screenshots": [
+    {
+      "form_factor": "wide",
+      "label": "View nbn locations at street level",
+      "src": "./91a83bbcaa7854cd150e.png",
+      "size": "1856×878"
+    },
+    {
+      "form_factor": "wide",
+      "label": "See technology areas at a city level",
+      "src": "./e01c0d3d072cedcaf4d0.png",
+      "size": "1855×883"
+    },
+    {
+      "form_factor": "narrow",
+      "label": "Take your map with you on the go",
+      "src": "./e9948aecf44289fffa34.png",
+      "size": "357×770"
+    }
+  ]
+}
