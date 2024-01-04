@@ -129,7 +129,7 @@ ready(function() {
 
     // Legend Control
     const cLegend = new ControlLegend();
-    cLegend.updateLegend(defaultMode.getLegendItems());
+    cLegend.updateLegend(defaultMode.getLegendItems(), nbnTechMap.getMap());
     nbnTechMap.addControl('legend', cLegend);
 
     // Search Control
@@ -144,7 +144,7 @@ ready(function() {
         }
         
         nbnTechMap.setModeHandler(mode);
-        cLegend.updateLegend(mode.getLegendItems());
+        cLegend.updateLegend(mode.getLegendItems(), nbnTechMap.getMap());
 
         localStorage.setItem('mode', e.state);
 

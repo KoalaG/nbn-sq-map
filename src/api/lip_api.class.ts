@@ -7,45 +7,38 @@ export default class LipApi implements IApi {
     async fetchPage(
         bounds: L.LatLngBounds,
         page: number = 1,
-        proceed: () => boolean = () => true,
+        bustCache: boolean = false
     ) : Promise<NbnPlaceApiResponse>
     {
 
+        // Extract Bounds
         const north = bounds.getNorth().toFixed(2);
         const east = bounds.getEast().toFixed(2);
         const south = bounds.getSouth().toFixed(2);
         const west = bounds.getWest().toFixed(2);
 
-        if (!proceed()) {
-            throw new Error('Proceed function returned false. Stopping fetch.');
-        }
-        
+        // Make sure page is a positive integer
         page = Math.max(1, Number(page));
 
+        // Set the URL and headers
         const pageUrl = `https://api.lip.net.au/nbn-bulk/map/${north}/${east}/${south}/${west}?page=${page}`;
+        const headers: any = {};
+        if (bustCache) {
+            headers['sw-network-first'] = '1';
+        }
 
-        // Check if page has already been loaded this session.
-        //const cache = sessionStorage.getItem(pageUrl);
-        //const cachedTime = cache ? new Date(cache) : null;
-        //if (cachedTime && cachedTime.getTime() > new Date().getTime() - 1000 * 60 * 60 * 24) {
-        //    throw new Error('Page already loaded this session.');
-        //}
-        
-        return await new Promise((resolve, reject) => {
-
-            fetch(`https://api.lip.net.au/nbn-bulk/map/${north}/${east}/${south}/${west}?page=${page}`, {
-                method: 'GET',
-                redirect: 'follow',
-            })
-            .then(response => response.text())
-            .then(result => {
-                const parsedResult = JSON.parse(result) as { data: NbnPlaceApiResponse};
-                resolve(parsedResult.data);
-                //sessionStorage.setItem(pageUrl, new Date().toISOString());
-            })
-            .catch(reject);
-
+        // Fetch the page
+        const response = await fetch(pageUrl, {
+            method: 'GET',
+            redirect: 'follow',
+            headers: headers
         });
-        
+
+        // Parse the response
+        const result = await response.text();
+        const parsedResult = JSON.parse(result) as { data: NbnPlaceApiResponse };
+
+        return parsedResult.data;
+
     }
 }

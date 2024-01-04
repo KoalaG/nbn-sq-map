@@ -22,6 +22,7 @@ import IMode from './interfaces/mode.interface';
 
 import { Logger } from "./utils";
 import IPlaceStore from './interfaces/placestore.interface';
+import ControlLegend from './controls/control_legend.class';
 
 export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     const north = Math.ceil(bounds.getNorth() * 50) / 50;
@@ -72,6 +73,12 @@ export default class NbnTechMap {
     private markerLayer: IMarkerLayer;
 
     private modeHandler: IMode;
+
+    private legendControl?: L.Control.Legend;
+
+    public getMap() {
+        return this.map;
+    }
 
     /**
      * 
@@ -426,6 +433,8 @@ export default class NbnTechMap {
         this.updateProgress(updateKey, boxesProcessed, true);
         logger.debug('All boxes fetched');
 
+        this.updateLegend();
+
     }
 
     private progressControl = new L.Control({ position: 'bottomleft' });
@@ -532,7 +541,7 @@ export default class NbnTechMap {
 
         try {
             
-            const data = await this.api.fetchPage(bounds, page, () => this.map.getBounds().intersects(bounds));
+            const data = await this.api.fetchPage(bounds, page, false);
             
             this.processFetchResult(data, bounds);
 
@@ -684,6 +693,26 @@ export default class NbnTechMap {
         console.log('Fetched Boxes Cleared', this.fetchedBoxes);
         this.markerLayer?.setModeHandler(modeHandler, this.placeStore);
         this.fetchDataForCurrentView();
+
     }
+
+    updateLegend() {
+
+        if (!this.controls.legend) {
+            return;
+        }
+
+        const bounds = this.map.getBounds();
+        const markers = this.markerLayer.getMarkersWithinBounds(bounds);
+
+        const legendItems = this.modeHandler.getLegendItems();
+        legendItems.forEach((item) => {
+            item.layers = markers.filter(marker => (marker as L.CircleMarker).options.fillColor == item.colour)
+        });
+
+        (this.controls.legend as ControlLegend).updateLegend(legendItems, this.map);
+
+    }
+
 
 }

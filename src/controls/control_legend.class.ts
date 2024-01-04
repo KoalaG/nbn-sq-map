@@ -5,6 +5,7 @@ import AControl from "./control.abstract";
 export default class ControlLegend extends AControl {
 
     private elControlDiv: HTMLDivElement = document.createElement('div');
+    private elLegendContainer: HTMLDivElement = document.createElement('div');
     
     constructor () {
         super();
@@ -17,6 +18,8 @@ export default class ControlLegend extends AControl {
         this.elControlDiv.style.padding = "5px";
         this.elControlDiv.style.borderRadius = "5px";
 
+        this.elControlDiv.appendChild(this.elLegendContainer);
+
         this.control.onAdd = (map: L.Map) => {
             return this.elControlDiv;
         }
@@ -27,18 +30,33 @@ export default class ControlLegend extends AControl {
         return undefined;
     }
 
-    updateLegend(items: LegendItem[]) {
+    updateLegend(items: LegendItem[], map: L.Map) {
 
-        let html = '';
+        // Empty the container
+        this.elLegendContainer.innerHTML = '';
+
         items.forEach(item => {
-            html += '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ item.colour +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> ' + item.label;
+            const elItem = document.createElement('div');
+            elItem.innerHTML = '<svg height="10" width="10"><circle cx="5" cy="5" r="5" fill="'+ item.colour +'" stroke="#000000" stroke-width="1" opacity="1" fill-opacity="0.8" /></svg> ' + item.label;
             if (item.count) {
-                html += ' (' + item.count + ')';
+                elItem.innerHTML += ' (' + item.count + ')';
             }
-            html += '<br>';
+            this.elLegendContainer.appendChild(elItem);
+            
+            elItem.onclick = () => {
+                if (item.layers) {
+                    if (!elItem.classList.contains('inactive')) {
+                        item.layers.forEach(layer => layer.remove() );
+                        elItem.classList.add('inactive');
+                    } else {
+                        item.layers.forEach(layer => layer.addTo(map) );
+                        elItem.classList.remove('inactive');
+                    }
+                }
+            }
+                
         });
 
-        this.elControlDiv.innerHTML = html;
 
     }
 

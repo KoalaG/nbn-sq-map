@@ -80,4 +80,5 @@ export type LegendItem = {
     label: string;
     colour: string;
     count?: number;
+    layers?: L.Layer[];
 }

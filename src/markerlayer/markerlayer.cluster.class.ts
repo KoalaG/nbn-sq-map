@@ -121,6 +121,11 @@ export default class MarkerLayerCluster implements IMarkerLayer {
 
     }
 
+    getMarkersWithinBounds(bounds: L.LatLngBounds): L.Layer[] {
+        return this.markers.getLayers()
+            .filter((layer: L.Layer) => bounds.contains((layer as L.Marker).getLatLng()));
+    }
+
     /**
      * Remove points from the map
      * @param points 

@@ -1,6 +1,5 @@
 import * as L from "leaflet";
-import IDatastore from "./datastore.interface";
-import { NbnPlace, PointAndLocids } from "../types";
+import { PointAndLocids } from "../types";
 import IMode from "./mode.interface";
 import IPlaceStore from "./placestore.interface";
 
@@ -11,8 +10,8 @@ export default interface IMarkerLayer {
         placestore: IPlaceStore,
     ): ThisType<this>;
 
-    //refreshMarkersInsideBounds(bounds: L.LatLngBounds, mFilter?: (place: NbnPlace) => boolean): void;
-
+    getMarkersWithinBounds(bounds: L.LatLngBounds): L.Layer[];
+    
     removeMarkersOutsideBounds(bounds: L.LatLngBounds): void;
 
     removeAllMarkers(): void;
