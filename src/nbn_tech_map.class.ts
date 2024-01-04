@@ -14,11 +14,10 @@ import { NbnPlace, NbnPlaceApiResponse, NbnTechMapOptions, PointAndLocids } from
 //import ControlFilter from './control_filter.class';
 
 import IApi from './interfaces/api.interface';
-import IDatastore from './interfaces/datastore.interface';
 import IMarkerLayer from './interfaces/markerlayer.interface';
 import MarkerLayerCluster from './markerlayer/markerlayer.cluster.class';
 import IControl from './interfaces/control.interface';
-import { chunkArray, isDebugMode } from './utils';
+import { isDebugMode } from './utils';
 import IMode from './interfaces/mode.interface';
 
 import { Logger } from "./utils";
@@ -32,9 +31,10 @@ export function roundBounds(bounds: L.LatLngBounds): L.LatLngBounds {
     return L.latLngBounds([south, west], [north, east]);
 }
 
-const MAX_BOXES_IN_VIEW = 500;
 
 export default class NbnTechMap {
+
+    private MAX_UNFETCHED_BOXES = 100;
 
     private logger = new Logger('NbnTechMap');
 
@@ -71,20 +71,7 @@ export default class NbnTechMap {
      */
     private markerLayer: IMarkerLayer;
 
-    /**
-     * @Property {markerFilter} - Function to filter markers
-     */
-    private markerFilter: (place: NbnPlace) => boolean = (place: NbnPlace) => true;
-
     private modeHandler: IMode;
-
-    // Stores map controls
-    /*controls: {[key: string]: any} = {
-        zoomWarning: null,
-        legend: null,
-        displayMode: null,
-        filter: null,
-    }*/
 
     /**
      * 
@@ -378,7 +365,7 @@ export default class NbnTechMap {
 
         const logger = this.logger.sub('fetchDataForCurrentView');
 
-        this.hideMarkersOutsideCurrentView();
+        //this.hideMarkersOutsideCurrentView();
         //this.displayMarkersInCurrentView();
 
         if (this.map.getZoom() < 11) {
@@ -401,7 +388,7 @@ export default class NbnTechMap {
         }
 
         // Don't fetch boxes if more than 50
-        if (unfetchedBoxes.length > MAX_BOXES_IN_VIEW) {
+        if (unfetchedBoxes.length > this.MAX_UNFETCHED_BOXES) {
             logger.warn('Too many boxes to fetch. Skipping.');
             this.showZoomInWarning();
             return;
@@ -539,10 +526,9 @@ export default class NbnTechMap {
         bounds: L.LatLngBounds, page: number = 1
     ) : Promise<void>
     {
+        const logger = this.logger.sub('fetchData');
 
-        if (isDebugMode()) {
-            console.log('Fetching Box', bounds.getCenter().toString(), page);
-        }
+        logger.debug('Fetching Box', bounds.getCenter().toString(), page);
 
         try {
             
@@ -574,45 +560,55 @@ export default class NbnTechMap {
      */
     processFetchResult(result: NbnPlaceApiResponse, bounds: L.LatLngBounds) {
 
+        const logger = this.logger.sub('processFetchResult');
+
+        logger.debug('Processing Fetch Result', result, bounds);
+
         // Store places
         this.placeStore.storePlaces(result.places);
 
         // Create temp storage for points
-        const points: {
-            [latLng: string]: PointAndLocids;
-        } = {};
+        const points: Map<string, PointAndLocids> = new Map();
 
         // Add place locids to points
         for (let i = 0; i < result.places.length; i++) {
 
             const place = result.places[i];
+
+            if (!this.modeHandler.filter(place)) {
+                continue;
+            }
+
             const latLng = `${place.latitude},${place.longitude}`;
 
             const placeColour = this.modeHandler.placeColour(place);
 
             // Create point if not already there
-            if (!points[latLng]) {
-                points[latLng] = {
+            const existingPoint = points.get(latLng);
+            if (!existingPoint) {
+                points.set(latLng, {
                     lat: place.latitude,
                     lng: place.longitude,
-                    col: [],
-                    add: [],
-                    ids: [],
-                };
+                    col: [ placeColour ],
+                    add: [ place.address1 ],
+                    ids: [ place.locid ],
+                })
             }
 
-            // Add locid to point if not already there
-            if (!points[latLng].ids.includes(place.locid)) {
-                points[latLng].ids.push(place.locid);
-                points[latLng].add?.push(place.address1);
-                points[latLng].col?.push(placeColour);
+            else {
+                // Add locid to point if not already there
+                if (!existingPoint.ids.includes(place.locid)) {
+                    existingPoint.ids.push(place.locid);
+                    existingPoint.add.push(place.address1);
+                    existingPoint.col.push(placeColour);
+                }
             }
 
         }
 
         // Send points to marker layer
-        const pointsArray = Object.values(points);
-        this.markerLayer.addPoints(pointsArray);
+        logger.debug('Adding points to marker layer', points);
+        this.markerLayer.addPoints(points);
 
     }
 
@@ -679,19 +675,15 @@ export default class NbnTechMap {
         console.log('Added control', key);
     }
 
-    setMarkerFilter(filter: (place: NbnPlace) => boolean) {
-
-        if (!this.markerLayer) {
-            throw new Error('Marker Layer not set');
-        }
-
-        this.markerFilter = filter;
-        //this.markerLayer.refreshMarkersInsideBounds(this.map.getBounds(), this.markerFilter);
-    }
-
     setModeHandler(modeHandler: IMode) {
         this.modeHandler = modeHandler;
+
+        this.markerLayer?.removeAllMarkers();
+        console.log('Current Fetched Boxes', this.fetchedBoxes);
+        this.fetchedBoxes.clear();
+        console.log('Fetched Boxes Cleared', this.fetchedBoxes);
         this.markerLayer?.setModeHandler(modeHandler, this.placeStore);
+        this.fetchDataForCurrentView();
     }
 
 }

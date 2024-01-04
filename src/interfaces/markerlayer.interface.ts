@@ -18,7 +18,7 @@ export default interface IMarkerLayer {
     removeAllMarkers(): void;
 
     addPoints(
-        points: PointAndLocids[]
+        points: Map<string, PointAndLocids>
     ): void;
 
 }

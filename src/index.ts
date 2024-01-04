@@ -20,6 +20,8 @@ import './assets/Screenshot3.png';
 import { Logger } from "./utils";
 import { NbnPlace } from "./types";
 import { IndexDBPlaceStore } from "./placestore/indexdb.placestore";
+import TechUpgradeMode from "./modes/techupgrade.mode";
+import EEMode from "./modes/ee.mode";
 const logger = new Logger('index.ts');
 
 const isDevelopment = (() => {
@@ -68,6 +70,44 @@ ready(function() {
     //const markerLayer = new MarkerLayerCluster();
 
     const modeAll = new AllMode();
+    const modeTechUpgrade = new TechUpgradeMode();
+    const modeEE = new EEMode();
+
+    const getDefaultModeString = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const modeFromUrl = urlParams.get('mode');
+
+        if (modeFromUrl) {
+            return modeFromUrl;
+        }
+
+        const modeFromStorage = localStorage.getItem('mode');
+        if (modeFromStorage) {
+            return modeFromStorage;
+        }
+
+        return 'all';
+    };
+    const getMode = (mode?: string) => {
+
+        if (!mode) {
+            mode = getDefaultModeString();
+        }
+
+        switch (mode) {
+            case 'all':
+                return modeAll;
+            case 'upgrade':
+                return modeTechUpgrade;
+            case 'ee':
+                return modeEE;
+            default:
+                return modeAll;
+        }
+    }
+
+    const defaultMode = getMode();
+
     const placeStore = new IndexDBPlaceStore();
 
     const nbnTechMap = new NbnTechMap({
@@ -75,7 +115,7 @@ ready(function() {
         api: mapApi,
         //datastore: datastore,
         //markerLayer: markerLayer,
-        defaultModeHandler: modeAll,
+        defaultModeHandler: defaultMode,
         placestore: placeStore,
     });
 
@@ -89,7 +129,7 @@ ready(function() {
 
     // Legend Control
     const cLegend = new ControlLegend();
-    cLegend.updateLegend(modeAll.getLegendItems());
+    cLegend.updateLegend(defaultMode.getLegendItems());
     nbnTechMap.addControl('legend', cLegend);
 
     // Search Control
@@ -98,17 +138,21 @@ ready(function() {
 
     // Add event Listeners
     cDisplayMode.on('change', (e) => {
-        switch (e.state) {
-            case 'all':
-                nbnTechMap.setModeHandler(modeAll);
-                break;
-            case 'upgrade':
-                break;
-            case 'ee':
-                break;
-            default:
-                break;
+        const mode = getMode(e.state);
+        if (!mode) {
+            return;
         }
+        
+        nbnTechMap.setModeHandler(mode);
+        cLegend.updateLegend(mode.getLegendItems());
+
+        localStorage.setItem('mode', e.state);
+
+        // Add mode param to existing url
+        const url = new URL(window.location.href);
+        url.searchParams.set('mode', e.state);
+        window.history.pushState({}, '', url.toString());
+        
     });
 
 })

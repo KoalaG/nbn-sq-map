@@ -37,8 +37,11 @@ const colourUnknown      = '#888888';
 
 import IMode from "../interfaces/mode.interface";
 import IPlaceStore from "../interfaces/placestore.interface";
+import { Logger } from "../utils";
 
 export default class MarkerLayerCluster implements IMarkerLayer {
+
+    private logger = new Logger('MarkerLayerCluster');
 
     private map: L.Map;
     private placeStore: IPlaceStore;
@@ -86,18 +89,18 @@ export default class MarkerLayerCluster implements IMarkerLayer {
      * @param points 
      */
     addPoints(
-        points: PointAndLocids[]
+        points: Map<string, PointAndLocids>
     ) : void
     {
+
+        const logger = this.logger.sub('addPoints');
         
         const newLayers: L.CircleMarker[] = [];
 
         // Add the points to the point store
         points.forEach((point) => {
             const latLngString = point.lat + ',' + point.lng;
-
             const pointMap = this.pointMap.get(latLngString);
-
             if (!pointMap) {
                 const newLayer = this.renderPoint(point);
                 newLayers.push(newLayer);
@@ -108,15 +111,33 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             } else {
                 pointMap.point = point;
             }
-
         });
 
         // Add all the layers to the map
+        logger.debug('Adding new layers', newLayers.length);
         if (newLayers.length) {
             this.markers.addLayers(newLayers);
         }
 
     }
+
+    /**
+     * Remove points from the map
+     * @param points 
+     */
+    removeAllPoints() : void
+    {
+        this.logger.sub('removeAllPoints').debug('Removing all points', this.pointMap);
+        this.markers.clearLayers();
+        this.pointMap.clear();
+        this.logger.sub('removeAllPoints').debug('Removed all points', this.pointMap);
+    }
+
+    
+    async removeAllMarkers(): Promise<void> {
+        this.removeAllPoints();
+    }
+
 
     markerClusterRadius(zoom: number) {
         switch(zoom) {
@@ -159,7 +180,7 @@ export default class MarkerLayerCluster implements IMarkerLayer {
     setModeHandler(modeHandler: IMode, placestore: IPlaceStore) {
 
         this.modeHandler = modeHandler;
-
+        /*
         this.pointMap.forEach(({ layer, point }) => {
 
             // Get the places
@@ -173,7 +194,7 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         if (this.markers && this.markers.getLayers().length) {
             this.markers.refreshClusters();
         }
-
+        */
         return this;
     }
 
@@ -233,10 +254,6 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         //    .filter((layer: L.CircleMarker) => !bounds.contains(layer.getLatLng()))
         //;
         //this.markers.removeLayers(removeMarkers);
-    }
-
-    async removeAllMarkers(): Promise<void> {
-        this.markers?.clearLayers();
     }
 
     renderPoint(point: PointAndLocids): L.CircleMarker {
