@@ -67,17 +67,18 @@ export default class ControDisplayMode extends AControl {
         allOption.innerText = 'Show All Locations';
         dropdown.appendChild(allOption);
 
-        /*
+        
         const upgradeOption = document.createElement('option');
         upgradeOption.value = 'upgrade';
         upgradeOption.innerText = 'Tech Upgrades';
         dropdown.appendChild(upgradeOption);
-
+        
+        
         const eeOption = document.createElement('option');
         eeOption.value = 'ee';
         eeOption.innerText = 'Enterprise Ethernet';
         dropdown.appendChild(eeOption);
-        */
+        
 
         dropdown.addEventListener('change', (e) => this.changeMode((e.target as HTMLSelectElement).value));
 

@@ -1,23 +1,21 @@
-import { latLng } from "leaflet";
 import IApi from "./interfaces/api.interface";
-import IDatastore from "./interfaces/datastore.interface";
-import NbnTechMap from "./nbn_tech_map.class";
-import IMarkerLayer from "./interfaces/markerlayer.interface";
 import IMode from "./interfaces/mode.interface";
+import IPlaceStore from "./interfaces/placestore.interface";
 
 export type NbnTechMapOptions = {
     mapContainerId: string;
     api: IApi;
-    datastore: IDatastore;
+    placestore: IPlaceStore;
     //markerLayer: IMarkerLayer;
     defaultModeHandler: IMode;
 }
 
 export type PointAndLocids = {
-    latlng: string;
-    latitude: number;
-    longitude: number;
-    locids: string[];
+    lat: number;
+    lng: number;
+    ids: string[];
+    col: string[];
+    add: string[];
 }
 
 export type PointAndPlaces = {

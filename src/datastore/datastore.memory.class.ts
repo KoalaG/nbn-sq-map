@@ -56,9 +56,11 @@ export class MemoryDatastore implements IDatastore {
             .map((latLng) => {
                 const [ latitude, longitude ] = latLng.split(',').map(Number);
                 return {
-                    latlng: latLng,
-                    latitude, longitude,
-                    locids: this.latLngIndex[latLng],
+                    lat: latitude,
+                    lng: longitude,
+                    ids: this.latLngIndex[latLng],
+                    add: [],
+                    col: [],
                 };
             })
         ;
@@ -66,16 +68,16 @@ export class MemoryDatastore implements IDatastore {
 
     async getPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndLocids[]> {
         const points = (await this.getPoints())
-            .filter(({ latitude, longitude }) => this.isLatLngWithinBounds(latitude, longitude, bounds))
+            .filter(({ lat, lng }) => this.isLatLngWithinBounds(lat, lng, bounds))
         return points;
     }
 
     async getFullPointsWithinBounds(bounds: L.LatLngBounds) : Promise<PointAndPlaces[]> {
         const points = (await this.getPoints())
-            .filter(({ latitude, longitude }) => this.isLatLngWithinBounds(latitude, longitude, bounds))
-            .map(({ latlng, latitude, longitude, locids }) => ({
-                latlng, latitude, longitude,
-                places: locids.map(locid => this.nbnPlaceStore[locid]),
+            .filter(({ lat, lng }) => this.isLatLngWithinBounds(lat, lng, bounds))
+            .map(({ lat, lng, ids }) => ({
+                latlng: `${lat},${lng}`, latitude: lat, longitude: lng,
+                places: ids.map(locid => this.nbnPlaceStore[locid]),
             }))
         return points;
     }
