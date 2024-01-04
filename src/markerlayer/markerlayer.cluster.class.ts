@@ -1,11 +1,11 @@
 import IDatastore from "../interfaces/datastore.interface";
 import IMarkerLayer from "../interfaces/markerlayer.interface";
-import 'leaflet.markercluster';
-import 'leaflet.markercluster/dist/MarkerCluster.css';
-//import 'leaflet.markercluster/dist/MarkerCluster.Default.css';
 
 import * as L from "leaflet";
-import { NbnPlace, PointAndLocids, PointAndPlaces } from "../types";
+import 'leaflet.markercluster';
+import 'leaflet.markercluster/dist/MarkerCluster.css';
+
+import { NbnPlace, PointAndLocids } from "../types";
 
 // Constant Colours
 const colourFTTP 		= '#1D7044';
@@ -36,26 +36,25 @@ const COL_TECH_MDU_ELIGIBLE     = '#6B02E3';
 const colourUnknown      = '#888888';
 
 import IMode from "../interfaces/mode.interface";
+import IPlaceStore from "../interfaces/placestore.interface";
 
 export default class MarkerLayerCluster implements IMarkerLayer {
 
     private map: L.Map;
-    private datastore: IDatastore;
+    private placeStore: IPlaceStore;
     private modeHandler: IMode;
 
     private markers: L.MarkerClusterGroup;
 
-    private points: {
-        [latLngString: string]: {
-            layer: L.CircleMarker,
-            point: PointAndPlaces,
-        }
-    } = {};
+    private pointMap: Map<string, {
+        layer: L.CircleMarker,
+        point: PointAndLocids
+    }> = new Map();
 
-    constructor(map: L.Map, datastore: IDatastore, modeHandler: IMode) {
+    constructor(map: L.Map, modeHandler: IMode, placeStore: IPlaceStore) {
 
         this.map = map;
-        this.datastore = datastore;
+        this.placeStore = placeStore;
         this.modeHandler = modeHandler;
 
         this.markers = new L.MarkerClusterGroup({
@@ -82,47 +81,41 @@ export default class MarkerLayerCluster implements IMarkerLayer {
 
     }
 
-
-    private iconCreateFunction(cluster: L.MarkerCluster) : L.DivIcon
+    /**
+     * Add points to the map
+     * @param points 
+     */
+    addPoints(
+        points: PointAndLocids[]
+    ) : void
     {
         
-        const colorArray = cluster.getAllChildMarkers().map((marker) => (marker as any).options.fillColor)
+        const newLayers: L.CircleMarker[] = [];
 
-        const colorCounts: {[color: string]: number} = {};
+        // Add the points to the point store
+        points.forEach((point) => {
+            const latLngString = point.lat + ',' + point.lng;
 
-        colorArray.forEach((color) => {
-            if (!colorCounts[color]) {
-                colorCounts[color] = 0;
+            const pointMap = this.pointMap.get(latLngString);
+
+            if (!pointMap) {
+                const newLayer = this.renderPoint(point);
+                newLayers.push(newLayer);
+                this.pointMap.set(latLngString, {
+                    layer: newLayer,
+                    point,
+                });
+            } else {
+                pointMap.point = point;
             }
-            colorCounts[color]++;
+
         });
 
-        const colorArraySorted = Object.keys(colorCounts)
-            .sort((a, b) => colorCounts[b] - colorCounts[a])
-        ;
+        // Add all the layers to the map
+        if (newLayers.length) {
+            this.markers.addLayers(newLayers);
+        }
 
-        let background = 'background: conic-gradient('
-
-        let lastColourPercent = 0;
-
-        colorArraySorted.forEach((color, index) => {
-            if (index == 0) {
-                background += "\n" + color + ' 0%';
-            }
-            const thisColourPercent = (colorCounts[color] / colorArray.length * 100);
-            background += ", \n" + color + ' ' + (lastColourPercent) + '%';
-            background += ", \n" + color + ' ' + (lastColourPercent+thisColourPercent) + '%';
-            lastColourPercent += thisColourPercent;
-        });
-
-        background += "\n);";
-
-        const randomId = Math.random().toString(36).substring(7);
-
-        return L.divIcon({
-            html: `<style>#cluster_${randomId}::before { ${background} }</style> <div id='cluster_${randomId}'><span>` + cluster.getChildCount() + '</span></div>',
-            className: 'marker-cluster',
-        })
     }
 
     markerClusterRadius(zoom: number) {
@@ -148,19 +141,34 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         }
     }
 
-    setModeHandler(modeHandler: IMode) {
+    private updatePointStyle(places: NbnPlace[], layer: L.CircleMarker) {
+        layer.setStyle({
+            fillColor: this.modeHandler.placeColour(places[0]),
+        });
+        layer.setTooltipContent(this.modeHandler.renderTooltip(places));
+        layer.redraw();
+    }
+
+    /**
+     * Set the mode handler
+     *  - Store the mode handler
+     *  - Update the colour of the points
+     * @param modeHandler 
+     * @returns 
+     */
+    setModeHandler(modeHandler: IMode, placestore: IPlaceStore) {
 
         this.modeHandler = modeHandler;
 
-        // Update the colour of the points
-        Object.values(this.points).forEach(({layer, point}) => {
-            layer.setStyle({
-                fillColor: modeHandler.pointColour(point),
-            });
-            layer.redraw();
-        });
+        this.pointMap.forEach(({ layer, point }) => {
 
-        console.error(this.markers);
+            // Get the places
+            const getPlaces = placestore.getPlaces(point.ids);
+
+            // Update the point style
+            getPlaces.then((places) => this.updatePointStyle(places, layer));
+
+        });
 
         if (this.markers && this.markers.getLayers().length) {
             this.markers.refreshClusters();
@@ -169,8 +177,9 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         return this;
     }
 
-    async refreshMarkersInsideBounds(bounds: L.LatLngBounds, mFilter?: (place: NbnPlace) => boolean) {
+    async DEP_refreshMarkersInsideBounds(bounds: L.LatLngBounds, mFilter?: (place: NbnPlace) => boolean) {
 
+        /*
         if (!this.datastore) {
             throw new Error('Datastore not set');
         }
@@ -180,8 +189,8 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         newPoints
             .forEach(point => {
                 const latLngString = point.latlng;
-                if (!this.points[latLngString]) {
-                    this.points[latLngString] = {
+                if (!this.pointStore[latLngString]) {
+                    this.pointStore[latLngString] = {
                         layer: this.renderPoint(point),
                         point,
                     };
@@ -215,6 +224,7 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         else {
             this.markers?.addLayers(Object.values(this.points).map(p => p.layer));
         }
+        */
     }
 
     async removeMarkersOutsideBounds(bounds: L.LatLngBounds) {
@@ -229,16 +239,11 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         this.markers?.clearLayers();
     }
 
-    /**
-     * Renders a point using the current mode handler.
-     * @param point
-     * @returns 
-     */
-    renderPoint(point: PointAndPlaces): L.CircleMarker {
-
-        const circleMarkerLayer = L.circleMarker([ point.latitude, point.longitude ], {
+    renderPoint(point: PointAndLocids): L.CircleMarker {
+            
+        const circleMarkerLayer = L.circleMarker([ point.lat, point.lng ], {
             radius: 5,
-            fillColor: this.modeHandler?.pointColour(point), //this.getPlaceColour(place),
+            fillColor: point.col ? point.col[0] : undefined, //this.getPlaceColour(place),
             color: "#000000",
             weight: 1,
             opacity: 1,
@@ -246,7 +251,21 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         });
 
         circleMarkerLayer.bindPopup(
-            (layer) => this.renderPopup(point.places) || '',
+            (layer) => {
+
+                // Async render popup from placeStore data
+                this.placeStore.getPlaces(point.ids).then((places) => {
+                    const popup = this.renderPopup(places);
+                    layer.setPopupContent(popup);
+                });
+
+                // Return loading popup content
+                const loadingPopup = document.createElement('div');
+                loadingPopup.innerHTML = '<div class="loading">Loading...</div>';
+
+                return loadingPopup;
+
+            },
             {
                 autoPan: true,
                 autoClose: false,
@@ -254,7 +273,15 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         );
 
         circleMarkerLayer.bindTooltip(
-            (layer) => this.modeHandler.renderTooltip(point.places) || '',
+            (layer) => {
+                let label = point.add[0];
+        
+                if (point.add.length > 1) {
+                    label += ' ( + ' + (point.add.length - 1) + ' more)';
+                }
+        
+                return label;
+            },
             {}
         );
         
@@ -415,5 +442,54 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         return getTechColour(place.techType);
     }
 */
+
+
+
+    /**
+     * Create the icon for the cluster
+     * @param cluster 
+     * @returns 
+     */
+    private iconCreateFunction(cluster: L.MarkerCluster) : L.DivIcon
+    {
+        
+        const colorArray = cluster.getAllChildMarkers().map((marker) => (marker as any).options.fillColor)
+
+        const colorCounts: {[color: string]: number} = {};
+
+        colorArray.forEach((color) => {
+            if (!colorCounts[color]) {
+                colorCounts[color] = 0;
+            }
+            colorCounts[color]++;
+        });
+
+        const colorArraySorted = Object.keys(colorCounts)
+            .sort((a, b) => colorCounts[b] - colorCounts[a])
+        ;
+
+        let background = 'background: conic-gradient('
+
+        let lastColourPercent = 0;
+
+        colorArraySorted.forEach((color, index) => {
+            if (index == 0) {
+                background += "\n" + color + ' 0%';
+            }
+            const thisColourPercent = (colorCounts[color] / colorArray.length * 100);
+            background += ", \n" + color + ' ' + (lastColourPercent) + '%';
+            background += ", \n" + color + ' ' + (lastColourPercent+thisColourPercent) + '%';
+            lastColourPercent += thisColourPercent;
+        });
+
+        background += "\n);";
+
+        const randomId = Math.random().toString(36).substring(7);
+
+        return L.divIcon({
+            html: `<style>#cluster_${randomId}::before { ${background} }</style> <div id='cluster_${randomId}'><span>` + cluster.getChildCount() + '</span></div>',
+            className: 'marker-cluster',
+        })
+    }
 
 }

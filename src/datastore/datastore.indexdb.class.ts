@@ -98,15 +98,16 @@ export class IndexDBDatastore implements IDatastore {
         const key = `${place.latitude},${place.longitude}`;
         let record = await store.get(key);
         if (record) {
-            record.locids.push(place.locid);
-            record.locids = [...new Set(record.locids)];
+            record.ids.push(place.locid);
+            record.ids = [...new Set(record.ids)];
         } else {
             // If the record doesn't exist, create a new one with 'locids' as an array containing the new locid
             record = {
-                latlng: key,
-                latitude: place.latitude,
-                longitude: place.longitude,
-                locids: [place.locid],
+                lat: place.latitude,
+                lng: place.longitude,
+                ids: [place.locid],
+                add: [place.address1],
+                col: [],
             };
         }
 
@@ -137,19 +138,20 @@ export class IndexDBDatastore implements IDatastore {
             let record = await pointStore.get(key);
 
             if (record) {
-                if ( (record.locids as string[]).includes(place.locid)) {
+                if ( (record.ids as string[]).includes(place.locid)) {
                     return;
                 } else {
-                    record.locids.push(place.locid);
-                    record.locids = [...new Set(record.locids)];
+                    record.ids.push(place.locid);
+                    record.ids = [...new Set(record.ids)];
                 }
             } else {
                 // If the record doesn't exist, create a new one with 'locids' as an array containing the new locid
                 record = {
-                    latlng: key,
-                    latitude: place.latitude,
-                    longitude: place.longitude,
-                    locids: [place.locid],
+                    lat: place.latitude,
+                    lng: place.longitude,
+                    ids: [place.locid],
+                    add: [place.address1],
+                    col: [],
                 };
             }
             pointStore.put(record);
@@ -224,9 +226,11 @@ export class IndexDBDatastore implements IDatastore {
         const points = (await pointsByLatitude).filter(async (point) => (await keysByLongitude).indexOf(point.latlng) !== -1);
 
         const pointsWithPlaces = await Promise.all(points.map(async point => {
-            const places = await Promise.all(point.locids.map(async locid => await placeStore.get(locid)));
+            const places = await Promise.all(point.ids.map(async locid => await placeStore.get(locid)));
             return {
-                ...point,
+                latlng: `${point.lat},${point.lng}`,
+                latitude: point.lat,
+                longitude: point.lng,
                 places: places.filter(place => !!place) as NbnPlace[],
             };
         }));

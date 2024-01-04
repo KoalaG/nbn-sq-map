@@ -19,6 +19,7 @@ import './assets/Screenshot3.png';
 
 import { Logger } from "./utils";
 import { NbnPlace } from "./types";
+import { IndexDBPlaceStore } from "./placestore/indexdb.placestore";
 const logger = new Logger('index.ts');
 
 const isDevelopment = (() => {
@@ -63,19 +64,20 @@ ready(function() {
 
     const mapApi = new LipApi();
     //const datastore = new IndexDBDatastore();
-    const datastore = new MemoryDatastore();
+    // const datastore = new MemoryDatastore();
     //const markerLayer = new MarkerLayerCluster();
 
     const modeAll = new AllMode();
+    const placeStore = new IndexDBPlaceStore();
 
     const nbnTechMap = new NbnTechMap({
         mapContainerId: 'map',
         api: mapApi,
-        datastore: datastore,
+        //datastore: datastore,
         //markerLayer: markerLayer,
-        defaultModeHandler: modeAll
+        defaultModeHandler: modeAll,
+        placestore: placeStore,
     });
-
 
     /**
      * Add Controls to Map
