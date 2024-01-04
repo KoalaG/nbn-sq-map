@@ -1,7 +1,0 @@
-/**
- * @file Main entry point for map scripts.
- * @module index.ts
- * @version 1.0.0
- * @author KoalaG
- * @license MIT
- */
