@@ -396,6 +396,7 @@ export default class NbnTechMap {
 
         // If no boxes to fetch, return
         if (unfetchedBoxes.length == 0) {
+            this.hideZoomInWarning();
             return;
         }
 
