@@ -41,6 +41,11 @@ export function chunkArray<T>(array: T[], size: number): T[][] {
     return results;
 }
 
+export function isLocalhost() {
+    return window.location.href.includes('localhost')
+        || window.location.href.includes('127.0.0.1')
+}
+
 export function isDebugMode() {
     return process.env.NODE_ENV === 'development'
         || window.location.href.includes('localhost')

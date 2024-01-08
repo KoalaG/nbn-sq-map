@@ -97,6 +97,13 @@ export default class TechUpgradeMode implements IMode {
             content.innerHTML += 'Program: ' + place.programType + '<br />';
             content.innerHTML += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
         }
+        
+        if (place.location.technologyPlan?.forecastRTCDate) {
+            content.innerHTML += 'Forecast RTC: ' + place.location.technologyPlan.forecastRTCDate + '<br />';
+        }
+        if (place.location.technologyPlan?.changeDate) {
+            content.innerHTML += 'Change Date: ' + place.location.technologyPlan.changeDate + '<br />';
+        }
 
         content.innerHTML += '<br />'; 
         

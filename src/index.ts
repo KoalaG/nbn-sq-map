@@ -124,7 +124,7 @@ ready(function() {
      */
 
     // Display Mode Control
-    const cDisplayMode = new ControDisplayMode();
+    const cDisplayMode = new ControDisplayMode(getDefaultModeString());
     nbnTechMap.addControl('displaymode', cDisplayMode);
 
     // Legend Control

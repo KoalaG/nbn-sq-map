@@ -58,11 +58,22 @@ export type NbnPlace = {
     cbdpricing: boolean;
     zeroBuildCost: boolean;
     businessFibre: boolean;
+
+    location: {
+        technologyPlan?: {
+            changeDate: string | null;
+            forecastRTCDate: string | null;
+        };
+    };
+    
 }
 
 export type NbnPlaceApiResponse = {
-    next: number;
-    total: number;
+    page: number;
+    nextPage: number;
+    totalPages: number;
+    records: number;
+    totalRecords: number;
     places: NbnPlace[];
 }
 

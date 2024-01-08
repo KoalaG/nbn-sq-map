@@ -536,8 +536,8 @@ export default class NbnTechMap {
             
             this.processFetchResult(data, bounds);
 
-            if (data.next) {
-                return await this.fetchData(bounds, data.next);
+            if (data.nextPage) {
+                return await this.fetchData(bounds, data.nextPage);
             }
 
             return;

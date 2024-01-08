@@ -1,7 +1,8 @@
 import IApi from "../interfaces/api.interface";
 import { NbnPlaceApiResponse } from "../types";
-import { isDebugMode } from "../utils";
+import { isLocalhost } from "../utils";
 
+const urlBase = isLocalhost() ? 'http://127.0.0.1:3000' : 'https://api.lip.net.au'
 export default class LipApi implements IApi {
 
     async fetchPage(
@@ -22,18 +23,18 @@ export default class LipApi implements IApi {
         
         page = Math.max(1, Number(page));
 
-        const pageUrl = `https://api.lip.net.au/nbn-bulk/map/${north}/${east}/${south}/${west}?page=${page}`;
+        const pageUrl = `${urlBase}/nbn-bulk/map/${north}/${east}/${south}/${west}?page=${page}`;
 
         // Check if page has already been loaded this session.
-        //const cache = sessionStorage.getItem(pageUrl);
-        //const cachedTime = cache ? new Date(cache) : null;
-        //if (cachedTime && cachedTime.getTime() > new Date().getTime() - 1000 * 60 * 60 * 24) {
-        //    throw new Error('Page already loaded this session.');
-        //}
+        // const cache = sessionStorage.getItem(pageUrl);
+        // const cachedTime = cache ? new Date(cache) : null;
+        // if (cachedTime && cachedTime.getTime() > new Date().getTime() - 1000 * 60 * 60 * 24) {
+        //     throw new Error('Page already loaded this session.');
+        // }
         
         return await new Promise((resolve, reject) => {
 
-            fetch(`https://api.lip.net.au/nbn-bulk/map/${north}/${east}/${south}/${west}?page=${page}`, {
+            fetch(pageUrl, {
                 method: 'GET',
                 redirect: 'follow',
             })

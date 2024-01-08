@@ -8,9 +8,10 @@ export default class ControDisplayMode extends AControl {
     private elControlDiv: HTMLDivElement = document.createElement('div');
     private elDropdown: HTMLSelectElement = document.createElement('select');
 
-    constructor () {
+    constructor (defaultMode: string) {
         super();
 
+        this.displayMode = defaultMode;
         this.generateControlDiv();
         this.control.onAdd = (map: L.Map) => {
             this.generateDropdown();
@@ -81,6 +82,7 @@ export default class ControDisplayMode extends AControl {
         
 
         dropdown.addEventListener('change', (e) => this.changeMode((e.target as HTMLSelectElement).value));
+        dropdown.value = this.displayMode;
 
         this.elDropdown = dropdown;
         this.elControlDiv.appendChild(dropdown);
