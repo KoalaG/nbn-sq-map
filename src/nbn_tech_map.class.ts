@@ -259,21 +259,27 @@ export default class NbnTechMap {
 
     }
 
+    private debugBoxes: L.Rectangle[] = [];
     getBoxesInBounds(bounds: L.LatLngBounds): L.LatLngBounds[] {
             
         // Starting point should be the north-west corner of the map rounded beyond the map bounds
         // Latitude is rounded to 2 decimal places multiple of 0.02
-        // Longitude is rounded to 2 decimal places multiple of 0.04
-        const northmost = Math.ceil(bounds.getNorth() * 50) / 50;
-        const westmmost = Math.floor(bounds.getWest() * 25) / 25;
+        // Longitude is rounded to 2 decimal places multiple of 0.02
+        const northmost = Math.ceil(bounds.getNorth() / 0.02) * 0.02;
+        const westmmost = Math.floor(bounds.getWest() / 0.02) * 0.02;
 
         // split map into boxes starting from north-west corner
-        // each box should be 0.02 degrees latitude by 0.04 degrees longitude
+        // each box should be 0.02 degrees latitude by 0.02 degrees longitude
         const boxes = [];
         for (let latitude = northmost; latitude > bounds.getSouth(); latitude -= 0.02) {
-            for (let longitude = westmmost; longitude < bounds.getEast(); longitude += 0.04) {
-                boxes.push([latitude, longitude]);
+            for (let longitude = westmmost; longitude < bounds.getEast(); longitude += 0.02) {
+                boxes.push([Number(latitude.toFixed(2)), Number(longitude.toFixed(2))]);
             }
+        }
+
+        if (isDebugMode()) {
+            console.log('Bounds', bounds);
+            console.log('Boxes', boxes);
         }
 
         // Map each box into a bounds object
@@ -281,9 +287,16 @@ export default class NbnTechMap {
             const north = box[0];
             const west = box[1];
             const south = north - 0.02;
-            const east = west + 0.04;
+            const east = west + 0.02;
             return L.latLngBounds([south, west], [north, east]);
         });
+
+        if (isDebugMode()) {
+            this.debugBoxes.forEach(box => this.map.removeLayer(box));
+            this.debugBoxes = boxBounds.map(box => {
+                return L.rectangle(box, {color: "#000000", weight: 2, fillColor: '#ff7800', fillOpacity: 0.01}).addTo(this.map);
+            })
+        }
 
         return boxBounds;
 
