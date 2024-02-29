@@ -61,8 +61,8 @@ export type NbnPlace = {
 }
 
 export type NbnPlaceApiResponse = {
-    next: number;
-    total: number;
+    nextPage: number;
+    totalPages: number;
     places: NbnPlace[];
 }
 

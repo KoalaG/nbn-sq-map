@@ -549,8 +549,8 @@ export default class NbnTechMap {
             
             this.processFetchResult(data, bounds);
 
-            if (data.next) {
-                return await this.fetchData(bounds, data.next);
+            if (data.nextPage) {
+                return await this.fetchData(bounds, data.nextPage);
             }
 
             return;
@@ -578,7 +578,8 @@ export default class NbnTechMap {
         logger.debug('Processing Fetch Result', result, bounds);
 
         // Store places
-        this.placeStore.storePlaces(result.places);
+        this.placeStore.storePlaces(result.places)
+            .catch(error => console.error('Error storing places', error));
 
         // Create temp storage for points
         const points: Map<string, PointAndLocids> = new Map();

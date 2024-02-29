@@ -134,8 +134,9 @@ export class IndexDBPlaceStore implements IPlaceStore {
         // Get the object store
         const placeStore = tx.objectStore('nbnPlaceStore');
 
-        // Put each place into the store
-        await places.map(place => placeStore.put(place))
+        // Put the places
+        const putPromises = places.filter(place => place).map(place => placeStore.put(place));
+        await Promise.all(putPromises);
         
         // Wait for the transaction to complete
         await tx.done;

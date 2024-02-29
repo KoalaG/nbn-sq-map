@@ -267,6 +267,10 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             fillOpacity: 0.8,
         });
 
+        circleMarkerLayer.on('click', (event) => {
+            console.log('click', event);
+        });
+
         circleMarkerLayer.bindPopup(
             (layer) => {
 

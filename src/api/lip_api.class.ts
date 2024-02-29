@@ -34,8 +34,8 @@ export default class LipApi implements IApi {
             })
             .then(response => response.text())
             .then(result => {
-                const parsedResult = JSON.parse(result) as { data: NbnPlaceApiResponse};
-                resolve(parsedResult.data);
+                const parsedResult = JSON.parse(result) as NbnPlaceApiResponse;
+                resolve(parsedResult);
             })
             .catch(reject);
 
