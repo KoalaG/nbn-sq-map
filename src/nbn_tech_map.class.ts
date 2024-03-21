@@ -605,14 +605,14 @@ export default class NbnTechMap {
                     lng: place.longitude,
                     col: [ placeColour ],
                     add: [ place.address1 ],
-                    ids: [ place.locid ],
+                    ids: [ place.id ],
                 })
             }
 
             else {
                 // Add locid to point if not already there
-                if (!existingPoint.ids.includes(place.locid)) {
-                    existingPoint.ids.push(place.locid);
+                if (!existingPoint.ids.includes(place.id)) {
+                    existingPoint.ids.push(place.id);
                     existingPoint.add.push(place.address1);
                     existingPoint.col.push(placeColour);
                 }

@@ -21,7 +21,7 @@ export class MemoryDatastore implements IDatastore {
         const latitude = place.latitude;
         const longitude = place.longitude;
         const latLng = `${latitude},${longitude}`;
-        const locid = place.locid;
+        const locid = place.id;
 
         // Store LOCID into index
         if (!this.latLngIndex[latLng]) {

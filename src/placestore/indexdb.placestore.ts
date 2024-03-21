@@ -32,7 +32,7 @@ export class IndexDBPlaceStore implements IPlaceStore {
         
         this.logger.info('Setting up database...');
 
-        openDB<NBNTechMapDB>(this.DB_NAME, 1, {
+        openDB<NBNTechMapDB>(this.DB_NAME, 2, {
 
             upgrade(db, oldVersion, newVersion, transaction, event) {
 
@@ -40,7 +40,7 @@ export class IndexDBPlaceStore implements IPlaceStore {
 
                 // Create nbn place store if it doesn't exist
                 if (!objectStoreNames.contains('nbnPlaceStore')) {
-                    db.createObjectStore('nbnPlaceStore', { keyPath: 'locid' });
+                    db.createObjectStore('nbnPlaceStore', { keyPath: 'id' });
                 }
 
             },

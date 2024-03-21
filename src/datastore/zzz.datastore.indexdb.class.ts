@@ -30,7 +30,7 @@ export class IndexDBDatastore implements IDatastore {
     // Setup database
     constructor() {
         console.log('Setting up database...');
-        openDB<NBNTechMapDB>('nbn-tech-map', 2, {
+        openDB<NBNTechMapDB>('nbn-tech-map', 3, {
             upgrade(db, oldVersion, newVersion, transaction, event) {
 
                 // Changes since version 1
@@ -40,10 +40,15 @@ export class IndexDBDatastore implements IDatastore {
                     transaction.objectStore('pointsStore').deleteIndex('latlng');
                 }
 
+                else if (oldVersion === 2) {
+                    // V3 changes
+                    transaction.objectStore('nbnPlaceStore').deleteIndex('locid');
+                }
+
                 // Current version
                 else {
 
-                    const nbnPlaceStore = db.createObjectStore('nbnPlaceStore', { keyPath: 'locid' });
+                    const nbnPlaceStore = db.createObjectStore('nbnPlaceStore', { keyPath: 'id' });
                     nbnPlaceStore.createIndex('latlng', ['latitude', 'longitude'], { unique: false });
 
                     const pointsStore = db.createObjectStore('pointsStore', { keyPath: 'latlng' });
@@ -98,14 +103,14 @@ export class IndexDBDatastore implements IDatastore {
         const key = `${place.latitude},${place.longitude}`;
         let record = await store.get(key);
         if (record) {
-            record.ids.push(place.locid);
+            record.ids.push(place.id);
             record.ids = [...new Set(record.ids)];
         } else {
             // If the record doesn't exist, create a new one with 'locids' as an array containing the new locid
             record = {
                 lat: place.latitude,
                 lng: place.longitude,
-                ids: [place.locid],
+                ids: [place.id],
                 add: [place.address1],
                 col: [],
             };
@@ -138,10 +143,10 @@ export class IndexDBDatastore implements IDatastore {
             let record = await pointStore.get(key);
 
             if (record) {
-                if ( (record.ids as string[]).includes(place.locid)) {
+                if ( (record.ids as string[]).includes(place.id)) {
                     return;
                 } else {
-                    record.ids.push(place.locid);
+                    record.ids.push(place.id);
                     record.ids = [...new Set(record.ids)];
                 }
             } else {
@@ -149,7 +154,7 @@ export class IndexDBDatastore implements IDatastore {
                 record = {
                     lat: place.latitude,
                     lng: place.longitude,
-                    ids: [place.locid],
+                    ids: [place.id],
                     add: [place.address1],
                     col: [],
                 };

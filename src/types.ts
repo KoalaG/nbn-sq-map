@@ -40,23 +40,27 @@ export type NbnPlaceStore = {
 }
 
 export type NbnPlace = {
-    locid: string;
+    id: string;
 
     latitude: number;
     longitude: number;
-    address1: string;
-    address2: string;
-
-    techType: string;
+    
     reasonCode: string;
     altReasonCode: string;
     techChangeStatus: string;
     programType: string;
     targetEligibilityQuarter: string;
+    techType: string;
 
-    ee: boolean;
-    cbdpricing: boolean;
+    address1: string;
+    address2: string;
+
     zeroBuildCost: boolean;
+    forecastedRTC: boolean;
+    coatChangeReason: string;
+    
+    cbdpricing: boolean;
+    ee: boolean;
     businessFibre: boolean;
 }
 
