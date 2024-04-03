@@ -40,7 +40,7 @@ export type NbnPlaceStore = {
 }
 
 export type NbnPlace = {
-    locid: string;
+    id: string;
 
     latitude: number;
     longitude: number;

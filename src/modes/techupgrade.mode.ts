@@ -64,7 +64,7 @@ export default class TechUpgradeMode implements IMode {
         
         const content = L.DomUtil.create('div');
 
-        content.innerHTML = '<b>'+place.locid+'</b></br>'
+        content.innerHTML = '<b>'+place.id+'</b></br>'
             + place.address1 + '</br>'
             + place.address2 + '</br>'
             + '<br />';
