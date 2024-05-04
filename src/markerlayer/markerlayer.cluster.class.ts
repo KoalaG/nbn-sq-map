@@ -153,9 +153,9 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             case 9:
             case 10:
             case 11:
-            case 12:
-            case 13: return 150;
-            case 14: return 100;
+            case 12: return 150;
+            case 13: return 100;
+            case 14: 
             case 15:
             case 16:
             default: return 0;
@@ -326,10 +326,10 @@ export default class MarkerLayerCluster implements IMarkerLayer {
         const placeContainers: HTMLElement[] = [];
 
         places.sort((a, b) => {
-            if (a.address1 < b.address1) {
+            if (a.addressDetail.address1 < b.addressDetail.address1) {
                 return -1;
             }
-            if (a.address1 > b.address1) {
+            if (a.addressDetail.address1 > b.addressDetail.address1) {
                 return 1;
             }
             return 0;
@@ -348,7 +348,7 @@ export default class MarkerLayerCluster implements IMarkerLayer {
             button.innerHTML = `<svg height="15" width="15" style="margin-right:3px">`
                 + `<circle class="circle" cx="7.5" cy="9" r="5" stroke="#000" stroke-width="1" fill="${placeColour}" />`
                 + `</svg>`
-                + `<span>${place.address1}</span>`
+                + `<span>${place.addressDetail.address1}</span>`
             
             // Add Panel
             const panel = document.createElement('div');

@@ -23,7 +23,7 @@ const COL_UNKNOWN       = '#888888';
 export default class EEMode implements IMode {
 
     filter(place: NbnPlace) : boolean {
-        return place.ee;
+        return place.addressDetail.ee;
     }
 
     pointColour(point: PointAndPlaces) : string {
@@ -32,19 +32,19 @@ export default class EEMode implements IMode {
 
     placeColour(place: NbnPlace) : string {
 
-        if(place.cbdpricing && place.zeroBuildCost) {
+        if(place.addressDetail.cbdpricing && place.addressDetail.zeroBuildCost) {
             return COL_EE_CBD_ZBC;
         }
 
-        if(place.cbdpricing && !place.zeroBuildCost) {
+        if(place.addressDetail.cbdpricing && !place.addressDetail.zeroBuildCost) {
             return COL_EE_CBD_BC;
         }
 
-        if(!place.cbdpricing && place.zeroBuildCost) {
+        if(!place.addressDetail.cbdpricing && place.addressDetail.zeroBuildCost) {
             return COL_EE_Z123_ZBC;
         }
 
-        if(!place.cbdpricing && !place.zeroBuildCost) {
+        if(!place.addressDetail.cbdpricing && !place.addressDetail.zeroBuildCost) {
             return COL_EE_Z123_BC;
         }
         
@@ -57,13 +57,13 @@ export default class EEMode implements IMode {
         const content = L.DomUtil.create('div');
 
         content.innerHTML = '<b>'+place.id+'</b></br>'
-            + place.address1 + '</br>'
-            + place.address2 + '</br>'
+            + place.addressDetail.address1 + '</br>'
+            + place.addressDetail.address2 + '</br>'
             + '<br />';
 
         content.innerHTML  += '<b>Enterprise Ethernet</b></br>';
-        content.innerHTML  += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
-        content.innerHTML  += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
+        content.innerHTML  += 'Price Zone: ' + ( place.addressDetail.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
+        content.innerHTML  += 'Build Cost: ' + ( place.addressDetail.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
         content.innerHTML  += '<br />';
         
         if (isDebugMode()) {
@@ -78,7 +78,7 @@ export default class EEMode implements IMode {
     }
 
     renderTooltip(places: NbnPlace[]) : string {
-        let label = places[0].address1;
+        let label = places[0].addressDetail.address1;
 
         if (places.length > 1) {
             label += ' ( + ' + (places.length - 1) + ' more)';

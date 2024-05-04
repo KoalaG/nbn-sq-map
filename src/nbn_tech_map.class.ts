@@ -549,8 +549,9 @@ export default class NbnTechMap {
             
             this.processFetchResult(data, bounds);
 
-            if (data.nextPage) {
-                return await this.fetchData(bounds, data.nextPage);
+            const { page: currentPage, totalPages } = data;
+            if (currentPage < totalPages) {
+                return await this.fetchData(bounds, data.page + 1);
             }
 
             return;
@@ -593,7 +594,7 @@ export default class NbnTechMap {
                 continue;
             }
 
-            const latLng = `${place.latitude},${place.longitude}`;
+            const latLng = `${place.addressDetail.latitude},${place.addressDetail.longitude}`;
 
             const placeColour = this.modeHandler.placeColour(place);
 
@@ -601,10 +602,10 @@ export default class NbnTechMap {
             const existingPoint = points.get(latLng);
             if (!existingPoint) {
                 points.set(latLng, {
-                    lat: place.latitude,
-                    lng: place.longitude,
+                    lat: place.addressDetail.latitude,
+                    lng: place.addressDetail.longitude,
                     col: [ placeColour ],
-                    add: [ place.address1 ],
+                    add: [ place.addressDetail.address1 ],
                     ids: [ place.id ],
                 })
             }
@@ -613,7 +614,7 @@ export default class NbnTechMap {
                 // Add locid to point if not already there
                 if (!existingPoint.ids.includes(place.id)) {
                     existingPoint.ids.push(place.id);
-                    existingPoint.add.push(place.address1);
+                    existingPoint.add.push(place.addressDetail.address1);
                     existingPoint.col.push(placeColour);
                 }
             }

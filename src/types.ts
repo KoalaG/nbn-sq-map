@@ -42,32 +42,40 @@ export type NbnPlaceStore = {
 export type NbnPlace = {
     id: string;
 
-    latitude: number;
-    longitude: number;
-    
-    reasonCode: string;
-    altReasonCode: string;
-    techChangeStatus: string;
-    programType: string;
-    targetEligibilityQuarter: string;
-    techType: string;
+    addressDetail: {
+        id: string;
 
-    address1: string;
-    address2: string;
-
-    zeroBuildCost: boolean;
-    forecastedRTC: boolean;
-    coatChangeReason: string;
+        address1: string;
+        address2: string;
     
-    cbdpricing: boolean;
-    ee: boolean;
-    businessFibre: boolean;
+        altReasonCode: string;
+        programType: string;
+        reasonCode: string;
+        targetEligibilityQuarter: string;
+        techChangeStatus: string;
+        techType: string;
+
+        coatChangeReason: string;
+        forecastedRTC: boolean;
+
+        businessFibre: boolean;
+        cbdpricing: boolean;
+        ee: boolean;
+        zeroBuildCost: boolean;
+
+        latitude: number;
+        longitude: number;
+
+        hoursSinceLastUpdate: number;
+    }
 }
 
 export type NbnPlaceApiResponse = {
-    nextPage: number;
-    totalPages: number;
     places: NbnPlace[];
+    page: number;
+    records: number;
+    totalPages: number;
+    totalRecords: number;
 }
 
 export type LayerWithPlace<T> = Partial<T>

@@ -20,11 +20,11 @@ export default class LipApi implements IApi {
 
         // Get url parameter apiServer
         const urlParams = new URLSearchParams(window.location.search);
-        const apiServer = urlParams.get('apiServer') || 'https://api.lip.net.au';
+        const apiServer = urlParams.get('apiServer') || 'https://nbn.api.lip.net.au';
         
         page = Math.max(1, Number(page));
 
-        const pageUrl = `${apiServer}/nbn-bulk/map/${north}/${west}?page=${page}`;
+        const pageUrl = `${apiServer}/places/map/${north}/${west}?page=${page}`;
         
         return await new Promise((resolve, reject) => {
 
