@@ -49,25 +49,25 @@ export function isDebugMode() {
 }
 
 export function isPlaceFTTP(place: NbnPlace) {
-    return place.addressDetail.techType === 'FTTP';
+    return place.techType === 'FTTP';
 }
 
 export function isPlaceFTTN(place: NbnPlace) {
-    return place.addressDetail.techType === 'FTTN';
+    return place.techType === 'FTTN';
 }
 
 export function isPlaceHFC(place: NbnPlace) {
-    return place.addressDetail.techType === 'HFC';
+    return place.techType === 'HFC';
 }
 
 export function isPlaceFTTB(place: NbnPlace) {
-    return place.addressDetail.techType === 'FTTB';
+    return place.techType === 'FTTB';
 }
 
 export function isPlaceFTTC(place: NbnPlace) {
-    if(place.addressDetail.techType == "FTTC"
-        && place.addressDetail.reasonCode && place.addressDetail.reasonCode.match(/^FTTC/)
-        && place.addressDetail.techChangeStatus == 'New Tech Connected'
+    if(place.techType == "FTTC"
+        && place.reasonCode && place.reasonCode.match(/^FTTC/)
+        && place.techChangeStatus == 'New Tech Connected'
     ) {
         return true;
     }
@@ -75,16 +75,16 @@ export function isPlaceFTTC(place: NbnPlace) {
 }
 
 export function isPlaceFixedWireless(place: NbnPlace) {
-    return place.addressDetail.techType === 'Fixed Wireless';
+    return place.techType === 'Fixed Wireless';
 }
 
 export function isPlaceSatellite(place: NbnPlace) {
-    return place.addressDetail.techType === 'Satellite';
+    return place.techType === 'Satellite';
 }
 
 export function isPlaceFTTPAvail(place: NbnPlace) {
-    if (place.addressDetail.altReasonCode && place.addressDetail.altReasonCode.match(/^FTTP/)) {
-        switch(place.addressDetail.techChangeStatus) {
+    if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+        switch(place.techChangeStatus) {
             case 'Eligible To Order':
                 return true;
         }
@@ -93,8 +93,8 @@ export function isPlaceFTTPAvail(place: NbnPlace) {
 }
 
 export function isPlaceFTTPSoon(place: NbnPlace) {
-    if (place.addressDetail.altReasonCode && place.addressDetail.altReasonCode.match(/^FTTP/)) {
-        switch(place.addressDetail.techChangeStatus) {
+    if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+        switch(place.techChangeStatus) {
             case 'In Design':
             case 'Build Finalised':
             case 'Planned':
@@ -107,8 +107,8 @@ export function isPlaceFTTPSoon(place: NbnPlace) {
 }
 
 export function isPlaceFTTPFar(place: NbnPlace) {
-    if (place.addressDetail.altReasonCode && place.addressDetail.altReasonCode.match(/^FTTP/)) {
-        switch(place.addressDetail.techChangeStatus) {
+    if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+        switch(place.techChangeStatus) {
             case 'Committed':
                 return true;
         }
@@ -116,24 +116,24 @@ export function isPlaceFTTPFar(place: NbnPlace) {
 }
 
 export function isFwtoFTTN(place: NbnPlace) {
-    return place.addressDetail.techType == "FTTN"
-        && place.addressDetail.reasonCode == "FTTN_SA"
-        && place.addressDetail.altReasonCode == "FW_CT"
-        && place.addressDetail.techChangeStatus == 'Eligible To Order'
+    return place.techType == "FTTN"
+        && place.reasonCode == "FTTN_SA"
+        && place.altReasonCode == "FW_CT"
+        && place.techChangeStatus == 'Eligible To Order'
     ;
 }
 
 export function isFwtoFTTC(place: NbnPlace) {
-    return place.addressDetail.techType == "FTTC"
-        && place.addressDetail.reasonCode == "FTTC_SA"
-        && place.addressDetail.altReasonCode == "FW_CT"
-        && place.addressDetail.techChangeStatus == 'Eligible To Order'
+    return place.techType == "FTTC"
+        && place.reasonCode == "FTTC_SA"
+        && place.altReasonCode == "FW_CT"
+        && place.techChangeStatus == 'Eligible To Order'
     ;
 }
 
 export function isSatToFW(place: NbnPlace) {
-    return place.addressDetail.techType == "WIRELESS"
-        && place.addressDetail.reasonCode == "FW_SA"
-        && place.addressDetail.techChangeStatus == 'Eligible To Order'
+    return place.techType == "WIRELESS"
+        && place.reasonCode == "FW_SA"
+        && place.techChangeStatus == 'Eligible To Order'
     ;
 }

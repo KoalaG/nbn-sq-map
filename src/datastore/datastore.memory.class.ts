@@ -18,8 +18,8 @@ export class MemoryDatastore implements IDatastore {
      */
     async storePlace(place: NbnPlace) : Promise<void> {
 
-        const latitude = place.addressDetail.latitude;
-        const longitude = place.addressDetail.longitude;
+        const latitude = place.latitude;
+        const longitude = place.longitude;
         const latLng = `${latitude},${longitude}`;
         const locid = place.id;
 

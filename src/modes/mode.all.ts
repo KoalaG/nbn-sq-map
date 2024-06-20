@@ -41,6 +41,9 @@ function getTechColour(techType: string) {
 
 export default class AllMode implements IMode {
 
+    readonly id = 'all';
+    readonly name = 'Show All Locations';
+
     filter(place: NbnPlace) : boolean {
         return true;
     }
@@ -64,7 +67,7 @@ export default class AllMode implements IMode {
         }
     
         if (isPlaceFTTPFar(place)) {
-            return getTechColour(place.addressDetail.techType);
+            return getTechColour(place.techType);
         }
     
         if (isPlaceFTTC(place)) {
@@ -83,11 +86,11 @@ export default class AllMode implements IMode {
             return colourFWAvail;
         }
     
-        if (place.addressDetail.altReasonCode && place.addressDetail.altReasonCode != 'NULL_NA') {
+        if (place.altReasonCode && place.altReasonCode != 'NULL_NA') {
             console.log(place);
         }
     
-        return getTechColour(place.addressDetail.techType);
+        return getTechColour(place.techType);
 
     }
 
@@ -96,46 +99,46 @@ export default class AllMode implements IMode {
         const content = L.DomUtil.create('div');
 
         content.innerHTML = '<b>'+place.id+'</b></br>'
-            + place.addressDetail.address1 + '</br>'
-            + place.addressDetail.address2 + '</br>'
+            + place.address1 + '</br>'
+            + place.address2 + '</br>'
             + '<br />';
             
         content.innerHTML += '<b>Technology Plan</b></br>';
 
         /** Technology Plan Final State */
-        if (place.addressDetail.techType == 'FTTP'
-            || !place.addressDetail.altReasonCode
-            || place.addressDetail.altReasonCode == 'NULL_NA'
+        if (place.techType == 'FTTP'
+            || !place.altReasonCode
+            || place.altReasonCode == 'NULL_NA'
         ) {
-            content.innerHTML += 'Technology: ' + place.addressDetail.techType + '<br />';
-            if (place.addressDetail.techType != 'FTTP') {
+            content.innerHTML += 'Technology: ' + place.techType + '<br />';
+            if (place.techType != 'FTTP') {
                 content.innerHTML += 'No tech upgrade planned<br />';
             }
         } 
         
-        else if (place.addressDetail.altReasonCode && place.addressDetail.altReasonCode.match(/^FTTP/)) {
-            content.innerHTML += 'Current: ' + place.addressDetail.techType + '<br />';
-            content.innerHTML += 'Change: ' + place.addressDetail.altReasonCode + '<br />';
-            content.innerHTML += 'Status: ' + place.addressDetail.techChangeStatus + '<br />';
-            content.innerHTML += 'Program: ' + place.addressDetail.programType + '<br />';
-            content.innerHTML += 'Target Qtr: ' + place.addressDetail.targetEligibilityQuarter + '<br />';
+        else if (place.altReasonCode && place.altReasonCode.match(/^FTTP/)) {
+            content.innerHTML += 'Current: ' + place.techType + '<br />';
+            content.innerHTML += 'Change: ' + place.altReasonCode + '<br />';
+            content.innerHTML += 'Status: ' + place.techChangeStatus + '<br />';
+            content.innerHTML += 'Program: ' + place.programType + '<br />';
+            content.innerHTML += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
         }
         
         else {
-            content.innerHTML += 'Current: ' + place.addressDetail.techType + '<br />';
-            content.innerHTML += 'Change: ' + place.addressDetail.altReasonCode + '<br />';
-            content.innerHTML += 'Status: ' + place.addressDetail.techChangeStatus + '<br />';
-            content.innerHTML += 'Program: ' + place.addressDetail.programType + '<br />';
-            content.innerHTML += 'Target Qtr: ' + place.addressDetail.targetEligibilityQuarter + '<br />';
+            content.innerHTML += 'Current: ' + place.techType + '<br />';
+            content.innerHTML += 'Change: ' + place.altReasonCode + '<br />';
+            content.innerHTML += 'Status: ' + place.techChangeStatus + '<br />';
+            content.innerHTML += 'Program: ' + place.programType + '<br />';
+            content.innerHTML += 'Target Qtr: ' + place.targetEligibilityQuarter + '<br />';
         }
 
 
         content.innerHTML += '<br />'; 
         
-        if (place.addressDetail.ee) {
+        if (place.ee) {
             content.innerHTML  += '<b>Enterprise Ethernet</b></br>';
-            content.innerHTML  += 'Price Zone: ' + ( place.addressDetail.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
-            content.innerHTML  += 'Build Cost: ' + ( place.addressDetail.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
+            content.innerHTML  += 'Price Zone: ' + ( place.cbdpricing ? 'CBD' : 'Zone 1/2/3' ) + '<br />'
+            content.innerHTML  += 'Build Cost: ' + ( place.zeroBuildCost ? '$0' : 'POA' ) + '<br />'
             content.innerHTML  += '<br />';
         }
 
@@ -151,7 +154,7 @@ export default class AllMode implements IMode {
     }
 
     renderTooltip(places: NbnPlace[]) : string {
-        let label = places[0].addressDetail.address1;
+        let label = places[0].address1;
 
         if (places.length > 1) {
             label += ' ( + ' + (places.length - 1) + ' more)';
@@ -172,7 +175,7 @@ export default class AllMode implements IMode {
                 colour: colourFTTPAvail,
             },
             {
-                label: 'FTTP Upgrade Soon',
+                label: 'FTTP Coming',
                 colour: colourFTTPSoon,
             },
             {

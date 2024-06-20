@@ -12,7 +12,7 @@ export default class LipApi implements IApi {
     {
 
         const north = bounds.getNorth().toFixed(2);
-        const west = bounds.getWest().toFixed(2);
+        const east = bounds.getEast().toFixed(2);
 
         if (!proceed()) {
             throw new Error('Proceed function returned false. Stopping fetch.');
@@ -24,7 +24,7 @@ export default class LipApi implements IApi {
         
         page = Math.max(1, Number(page));
 
-        const pageUrl = `${apiServer}/places/map/${north}/${west}?page=${page}`;
+        const pageUrl = `${apiServer}/places/map/${north}/${east}?page=${page}`;
         
         return await new Promise((resolve, reject) => {
 

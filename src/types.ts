@@ -42,32 +42,31 @@ export type NbnPlaceStore = {
 export type NbnPlace = {
     id: string;
 
-    addressDetail: {
-        id: string;
+    address1: string;
+    address2: string;
 
-        address1: string;
-        address2: string;
-    
-        altReasonCode: string;
-        programType: string;
-        reasonCode: string;
-        targetEligibilityQuarter: string;
-        techChangeStatus: string;
-        techType: string;
+    altReasonCode: string;
+    programType: string;
+    reasonCode: string;
+    targetEligibilityQuarter: string;
+    techChangeStatus: string;
+    techType: string;
 
-        coatChangeReason: string;
-        forecastedRTC: boolean;
+    hstStatus: string;
+    hstSpeedTier: string;
 
-        businessFibre: boolean;
-        cbdpricing: boolean;
-        ee: boolean;
-        zeroBuildCost: boolean;
+    coatChangeReason: string;
+    forecastedRTC: boolean;
 
-        latitude: number;
-        longitude: number;
+    businessFibre: boolean;
+    cbdpricing: boolean;
+    ee: boolean;
+    zeroBuildCost: boolean;
 
-        hoursSinceLastUpdate: number;
-    }
+    latitude: number;
+    longitude: number;
+
+    hoursSinceLastUpdate: number;
 }
 
 export type NbnPlaceApiResponse = {

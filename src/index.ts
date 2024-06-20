@@ -22,6 +22,8 @@ import { NbnPlace } from "./types";
 import { IndexDBPlaceStore } from "./placestore/indexdb.placestore";
 import TechUpgradeMode from "./modes/techupgrade.mode";
 import EEMode from "./modes/ee.mode";
+import FixedWirelessMode from "./modes/fwhst.mode";
+import IMode from "./interfaces/mode.interface";
 const logger = new Logger('index.ts');
 
 const isDevelopment = (() => {
@@ -69,9 +71,12 @@ ready(function() {
     // const datastore = new MemoryDatastore();
     //const markerLayer = new MarkerLayerCluster();
 
-    const modeAll = new AllMode();
-    const modeTechUpgrade = new TechUpgradeMode();
-    const modeEE = new EEMode();
+    const modesArray = [
+        new AllMode(),
+        new TechUpgradeMode(),
+        new FixedWirelessMode(),
+        new EEMode(),
+    ];
 
     const getDefaultModeString = () => {
         const urlParams = new URLSearchParams(window.location.search);
@@ -88,25 +93,12 @@ ready(function() {
 
         return 'all';
     };
-    const getMode = (mode?: string) => {
-
-        if (!mode) {
-            mode = getDefaultModeString();
-        }
-
-        switch (mode) {
-            case 'all':
-                return modeAll;
-            case 'upgrade':
-                return modeTechUpgrade;
-            case 'ee':
-                return modeEE;
-            default:
-                return modeAll;
-        }
+    const getDefaultMode = () => {
+        const mode = getDefaultModeString();
+        return modesArray.find(m => m.id === mode) || modesArray[0];
     }
 
-    const defaultMode = getMode();
+    const defaultMode = getDefaultMode();
 
     const placeStore = new IndexDBPlaceStore();
 
@@ -124,7 +116,7 @@ ready(function() {
      */
 
     // Display Mode Control
-    const cDisplayMode = new ControDisplayMode();
+    const cDisplayMode = new ControDisplayMode(modesArray, getDefaultMode());
     nbnTechMap.addControl('displaymode', cDisplayMode);
 
     // Legend Control
@@ -138,7 +130,9 @@ ready(function() {
 
     // Add event Listeners
     cDisplayMode.on('change', (e) => {
-        const mode = getMode(e.state);
+
+        console.log('Mode Change', e);
+        const mode = e.data as IMode;
         if (!mode) {
             return;
         }

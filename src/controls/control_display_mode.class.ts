@@ -1,6 +1,7 @@
 import * as L from 'leaflet';
 //import NbnTechMap from "../nbn_tech_map.class";
 import AControl from "./control.abstract";
+import IMode from '../interfaces/mode.interface';
 
 export default class ControDisplayMode extends AControl {
 
@@ -8,12 +9,12 @@ export default class ControDisplayMode extends AControl {
     private elControlDiv: HTMLDivElement = document.createElement('div');
     private elDropdown: HTMLSelectElement = document.createElement('select');
 
-    constructor () {
+    constructor (modes: IMode[], defaultMode: IMode) {
         super();
 
         this.generateControlDiv();
         this.control.onAdd = (map: L.Map) => {
-            this.generateDropdown();
+            this.generateDropdown(modes, defaultMode);
             return this.elControlDiv;
         }
 
@@ -24,20 +25,9 @@ export default class ControDisplayMode extends AControl {
     getState() : string {
         return this.displayMode;
     }
-
-
-    private allLabel: any = null;
-    private allRadio: any = null;
-    private allText: any = null;
-    private upgradeLabel: any = null;
-    private upgradeRadio: any = null;
-    private upgradeText: any = null;
-    private eeLabel: any = null;
-    private eeRadio: any = null;
-    private eeText: any = null;
     
-    changeMode(mode: string) {
-        this.displayMode = mode;
+    changeMode(mode: IMode) {
+        this.displayMode = mode.id;
         this.emit('change', mode);
     }
 
@@ -54,7 +44,7 @@ export default class ControDisplayMode extends AControl {
 
     }
 
-    private generateDropdown() : void {
+    private generateDropdown(modes: IMode[], defaultMode: IMode) : void {
         if (this.elDropdown) {
             console.warn('Dropdown already exists');
         }
@@ -62,25 +52,18 @@ export default class ControDisplayMode extends AControl {
         const dropdown = this.elDropdown;
         dropdown.classList.add('control-select');
 
-        const allOption = document.createElement('option');
-        allOption.value = 'all';
-        allOption.innerText = 'Show All Locations';
-        dropdown.appendChild(allOption);
+        for (const mode of modes) {
+            const option = document.createElement('option');
+            option.value = mode.id;
+            option.innerText = mode.name;
+            if (mode.id === defaultMode.id) {
+                option.selected = true;
+            }
+            dropdown.appendChild(option);
+        }
 
+        dropdown.addEventListener('change', (e) => this.changeMode(modes.find(m => m.id === dropdown.value) || defaultMode));
         
-        const upgradeOption = document.createElement('option');
-        upgradeOption.value = 'upgrade';
-        upgradeOption.innerText = 'Tech Upgrades';
-        dropdown.appendChild(upgradeOption);
-        
-        
-        const eeOption = document.createElement('option');
-        eeOption.value = 'ee';
-        eeOption.innerText = 'Enterprise Ethernet';
-        dropdown.appendChild(eeOption);
-        
-
-        dropdown.addEventListener('change', (e) => this.changeMode((e.target as HTMLSelectElement).value));
 
         this.elDropdown = dropdown;
         this.elControlDiv.appendChild(dropdown);
