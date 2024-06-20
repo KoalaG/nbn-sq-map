@@ -113,7 +113,7 @@ self.addEventListener("fetch", function(event) {
 
     // API Requests
     if (event.request.url.includes('/nbn-bulk/map/')) {
-        return event.respondWith(fromCacheFirst(`${cacheName}-places`, event.request, 1));
+        return event.respondWith(fromCacheFirst(`${cacheName}-places`, event.request, 0.25));
     }
 
     // Everything else
