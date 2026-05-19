@@ -30,10 +30,10 @@
     "style-loader": "^4.0.0",
     "ts-loader": "^9.5.1",
     "typescript": "^5.5.2",
-    "webpack": "^5.92.1",
+    "webpack": "^5.106.2",
     "webpack-cli": "^5.1.4",
-    "webpack-dev-server": "^5.0.4",
+    "webpack-dev-server": "^5.2.4",
     "webpack-pwa-manifest": "^4.0.0",
-    "workbox-webpack-plugin": "^7.1.0"
+    "workbox-webpack-plugin": "^7.4.1"
   }
 }
